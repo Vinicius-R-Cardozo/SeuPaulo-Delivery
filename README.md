@@ -117,6 +117,31 @@ automaticamente a linha em `profiles` com o papel escolhido.
 > Para criar o **admin**: cadastre-se normalmente e, no SQL Editor, rode
 > `update public.profiles set role='admin' where email='seu@email.com';`
 
+## 🖥️ Painel administrativo (site separado — Vercel)
+
+O admin **não fica dentro do app** — ele é um **site próprio** na pasta `admin/`
+(projeto Vite independente), que consome o **mesmo Supabase**. Assim você mexe no
+painel sem tocar no aplicativo do cliente/entregador.
+
+### Rodar localmente
+```bash
+cd admin
+npm install
+# crie admin/.env.local com as chaves do Supabase (ver admin/.env.example)
+npm run dev        # http://localhost:5180
+```
+Entre com uma conta de papel `admin` (ex.: `admin@seupaulo.com`).
+
+### Deploy no Vercel
+1. Importe o repositório no Vercel (**Add New → Project**).
+2. Em **Root Directory**, selecione a pasta **`admin`**.
+3. Framework: **Vite** (build `npm run build`, output `dist` — detectado automaticamente).
+4. Em **Environment Variables**, adicione:
+   - `VITE_USE_SUPABASE = true`
+   - `VITE_SUPABASE_URL = https://SEU-PROJETO.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY = sua-anon-ou-publishable-key`
+5. **Deploy**. O `admin/vercel.json` já cuida do roteamento SPA.
+
 ## 🐍 Backend FastAPI + ngrok
 
 Além do backend mock e do Supabase, o projeto traz uma **API própria em FastAPI +
