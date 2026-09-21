@@ -24,7 +24,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { FullScreenLoader } from '@/components/ui/Spinner';
 import { AddressPickerMap } from '@/components/maps/AddressPickerMap';
 import { RESTAURANT } from '@/data/restaurant';
-import { uid } from '@/utils/id';
+import { uuid } from '@/utils/id';
 import { formatKm } from '@/utils/format';
 import { haversineKm } from '@/utils/geo';
 import { cn } from '@/utils/cn';
@@ -257,16 +257,19 @@ function AddressEditor({
 
   // Ao mover o pino no mapa, tenta preencher o endereço por geocodificação reversa.
   const onPinChange = async (p: LatLng) => {
+    // Mover o pino só ajusta as COORDENADAS. Se algum campo estiver vazio,
+    // tentamos preenchê-lo por geocodificação reversa — sem nunca sobrescrever
+    // o que o usuário já digitou.
     setPoint(p);
     try {
       const r = await reverseGeocode(p);
       setForm((f) => ({
         ...f,
-        street: r.street ?? f.street,
-        neighborhood: r.neighborhood ?? f.neighborhood,
-        city: r.city ?? f.city,
-        state: r.state ?? f.state,
-        zip: r.zip ?? f.zip,
+        street: f.street || r.street || '',
+        neighborhood: f.neighborhood || r.neighborhood || '',
+        city: f.city || r.city || f.city,
+        state: f.state || r.state || f.state,
+        zip: f.zip || r.zip || '',
       }));
     } catch {
       /* silencioso — o usuário pode digitar manualmente */
@@ -281,7 +284,7 @@ function AddressEditor({
     setSaving(true);
     try {
       const address: Address = {
-        id: initial?.id ?? uid('a'),
+        id: initial?.id ?? uuid(),
         userId,
         label,
         street: form.street.trim(),

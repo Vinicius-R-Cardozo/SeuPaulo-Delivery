@@ -1,10 +1,18 @@
 /** Geradores de identificadores. */
 
+/** UUID puro (sem prefixo) — use para colunas do tipo uuid no Supabase. */
+export function uuid(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  // Fallback RFC4122-ish para ambientes sem crypto.randomUUID.
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export function uid(prefix = ''): string {
-  const rand =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const rand = uuid();
   return prefix ? `${prefix}_${rand}` : rand;
 }
 

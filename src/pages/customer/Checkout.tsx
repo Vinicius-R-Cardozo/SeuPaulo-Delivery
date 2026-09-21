@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Bike, Store, Plus, MapPin, Check, QrCode, CreditCard, Banknote } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,9 +35,12 @@ export function Checkout() {
   const [needsChange, setNeedsChange] = useState(false);
   const [changeFor, setChangeFor] = useState('');
   const [placing, setPlacing] = useState(false);
+  // Evita que o "carrinho vazio" redirecione logo após o pedido ser feito
+  // (o clear() esvazia o carrinho e essa corrida mandava pro /carrinho).
+  const placedRef = useRef(false);
 
   useEffect(() => {
-    if (items.length === 0) navigate('/app/carrinho', { replace: true });
+    if (items.length === 0 && !placedRef.current) navigate('/app/carrinho', { replace: true });
   }, [items.length, navigate]);
 
   useEffect(() => {
@@ -61,14 +64,16 @@ export function Checkout() {
 
   const total = subtotal - discount + deliveryFee;
 
-  const outOfRange =
+  // Fora do raio é apenas um AVISO — não bloqueia o pedido. A entrega sempre
+  // parte do bar; a distância só influencia a taxa/tempo.
+  const farAway =
     fulfillment === 'delivery' &&
     selectedAddress != null &&
     !isWithinDeliveryRadius({ lat: selectedAddress.lat, lng: selectedAddress.lng });
 
   const canPlace =
     !placing &&
-    (fulfillment === 'pickup' || (selectedAddress != null && !outOfRange)) &&
+    (fulfillment === 'pickup' || selectedAddress != null) &&
     (!needsChange || Number(changeFor.replace(',', '.')) >= total);
 
   const placeOrder = async () => {
@@ -95,9 +100,12 @@ export function Checkout() {
       // Camada de pagamento isolada (demo). Em produção, o gateway confirma via webhook.
       await paymentProvider.createIntent(order.id, total, payment);
 
-      clear();
+      placedRef.current = true;
       toast.success('Pedido realizado! Acompanhe em tempo real. 🍻');
+      // Navega ANTES de limpar o carrinho: assim o Checkout desmonta e o
+      // redirect de "carrinho vazio" não corre contra o acompanhamento.
       navigate(`/app/pedido/${order.id}`, { replace: true });
+      setTimeout(() => clear(), 0);
     } catch (err) {
       toast.error((err as Error).message);
       setPlacing(false);
@@ -187,9 +195,10 @@ export function Checkout() {
                 ))}
               </div>
             )}
-            {outOfRange && (
-              <p className="mt-2 text-xs text-danger">
-                Este endereço está fora do nosso raio de entrega de {RESTAURANT.deliveryRadiusKm} km.
+            {farAway && (
+              <p className="mt-2 text-xs text-amber">
+                Endereço um pouco distante do bar — a entrega pode levar mais tempo, mas o pedido
+                pode ser feito normalmente.
               </p>
             )}
           </section>

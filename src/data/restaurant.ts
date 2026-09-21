@@ -8,11 +8,11 @@ export const RESTAURANT = {
   name: 'Seu Paulo Buteco',
   brand: 'Seu Paulo Delivery',
   tagline: 'O buteco na palma da mão',
-  address: 'R. Milton Viêra Pinto, 16',
+  address: 'Rua Milton Vieira Pinto, 16',
   neighborhood: 'Angola',
   city: 'Betim',
   state: 'MG',
-  zip: '32653-456',
+  zip: '32604-148',
   phoneDisplay: '(31) 7352-9146',
   phoneLink: '+553173529146',
   whatsapp: 'https://wa.me/553173529146',
@@ -20,8 +20,8 @@ export const RESTAURANT = {
   instagramHandle: '@seupaulobuteco',
   /** Coordenadas da casa (extraídas do embed do Google Maps do site). */
   location: { lat: -19.9503895, lng: -44.2166209 } as LatLng,
-  /** Raio de entrega em km. */
-  deliveryRadiusKm: 8,
+  /** Raio de entrega em km (referência para o aviso; não bloqueia o pedido). */
+  deliveryRadiusKm: 25,
   /** Taxa base + por km, usada no cálculo do frete. */
   deliveryBaseFee: 4.99,
   deliveryPerKm: 1.6,
