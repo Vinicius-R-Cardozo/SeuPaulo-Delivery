@@ -1,0 +1,266 @@
+@import 'tailwindcss';
+
+/* ==========================================================================
+   SEU PAULO DELIVERY — Design System
+   Paleta extraída da própria logo do Seu Paulo Buteco:
+   vermelho #A42129, madeira/noite de boteco, creme de papel kraft e âmbar do chope.
+   Identidade: boteco brasileiro, quente, descontraído e acolhedor — nada de azul genérico.
+   ========================================================================== */
+@theme {
+  /* Tintas escuras — madeira e noite de boteco */
+  --color-ink: #121010;
+  --color-ink-2: #1a1615;
+  --color-ink-3: #26201f;
+  --color-ink-4: #3a3230;
+  --color-ink-5: #554b48;
+
+  /* Creme de papel kraft — o mesmo tom do cardápio impresso */
+  --color-cream: #f7f2e8;
+  --color-cream-2: #ebe2d2;
+  --color-cream-3: #d8ccb6;
+
+  /* Vermelho da marca */
+  --color-brand: #a42129;
+  --color-brand-2: #c22b34;
+  --color-brand-deep: #75151c;
+
+  /* Âmbar do chope — destaque, badges, preços */
+  --color-amber: #d9a441;
+  --color-amber-2: #e7bd6a;
+
+  /* Semânticas de status */
+  --color-success: #3f9d5a;
+  --color-warning: #d9a441;
+  --color-danger: #c22b34;
+  --color-info: #4a7fb0;
+
+  --font-display: 'Anton', 'Arial Narrow', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  --radius-card: 1rem;
+  --shadow-boteco: 0 28px 60px -32px rgba(18, 16, 16, 0.7);
+}
+
+@layer base {
+  :root {
+    --focus-ring: #d9a441;
+    --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+    color-scheme: dark;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-ink);
+    color: var(--color-cream);
+    font-family: var(--font-sans);
+    overflow-x: clip;
+    touch-action: manipulation;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-brand);
+    color: var(--color-cream);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Scrollbar discreta no tema escuro */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-ink-2);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-ink-4);
+    border-radius: 999px;
+    border: 2px solid var(--color-ink-2);
+  }
+}
+
+@layer components {
+  /* Título de exibição — Anton, caixa alta, apertado */
+  .display {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    line-height: 0.94;
+    letter-spacing: 0.01em;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  /* Botão primário do boteco */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 0.75rem 1.25rem;
+    transition: all 0.2s var(--ease-out-soft);
+    cursor: pointer;
+    border: 1px solid transparent;
+    user-select: none;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--color-brand);
+    color: var(--color-cream);
+  }
+  .btn-primary:not(:disabled):hover {
+    background: var(--color-brand-2);
+    transform: translateY(-1px);
+  }
+  .btn-amber {
+    background: var(--color-amber);
+    color: var(--color-ink);
+  }
+  .btn-amber:not(:disabled):hover {
+    background: var(--color-amber-2);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-cream);
+    border-color: color-mix(in srgb, var(--color-cream) 18%, transparent);
+  }
+  .btn-ghost:not(:disabled):hover {
+    border-color: var(--color-brand-2);
+    background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+  }
+
+  .card {
+    background: var(--color-ink-2);
+    border: 1px solid var(--color-ink-3);
+    border-radius: var(--radius-card);
+  }
+
+  .input {
+    width: 100%;
+    background: var(--color-ink-2);
+    border: 1px solid var(--color-ink-4);
+    border-radius: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    color: var(--color-cream);
+    font-size: 0.95rem;
+    transition: border-color 0.15s;
+  }
+  .input::placeholder {
+    color: color-mix(in srgb, var(--color-cream) 40%, transparent);
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--color-amber);
+  }
+  .input[aria-invalid='true'] {
+    border-color: var(--color-danger);
+  }
+
+  .label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: var(--color-cream-3);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
+  }
+  .animate-in {
+    animation: fade-in-up 0.4s var(--ease-out-soft) both;
+  }
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .shimmer {
+    background: linear-gradient(
+      100deg,
+      var(--color-ink-2) 30%,
+      var(--color-ink-3) 50%,
+      var(--color-ink-2) 70%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite linear;
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+/* Leaflet — ajustes de tema escuro para casar com o boteco */
+.leaflet-container {
+  background: var(--color-ink-3);
+  font-family: var(--font-sans);
+}
+.leaflet-tile {
+  filter: saturate(0.85) brightness(0.9);
+}
+.leaflet-control-attribution {
+  background: rgba(18, 16, 16, 0.7) !important;
+  color: color-mix(in srgb, var(--color-cream) 40%, transparent) !important;
+}
+.leaflet-control-attribution a {
+  color: var(--color-amber) !important;
+}
+.leaflet-bar a {
+  background: var(--color-ink-2) !important;
+  color: var(--color-cream) !important;
+  border-color: var(--color-ink-4) !important;
+}

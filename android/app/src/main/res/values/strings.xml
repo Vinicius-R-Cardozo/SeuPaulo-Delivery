@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Seu Paulo Delivery</string>
+    <string name="title_activity_main">Seu Paulo Delivery</string>
+    <string name="package_name">com.seupaulo.delivery</string>
+    <string name="custom_url_scheme">com.seupaulo.delivery</string>
+</resources>
