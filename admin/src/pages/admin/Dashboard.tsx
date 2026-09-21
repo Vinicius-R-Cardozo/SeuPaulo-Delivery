@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, DollarSign, Bike, Users, ArrowRight } from 'lucide-react';
-import { useAllOrders } from '@/hooks/useOrders';
+import { useOrdersFeed } from '@/contexts/OrdersContext';
 import { OrderStatusBadge } from '@/components/ui/StatusBadge';
 import { formatBRL, formatTime } from '@/utils/format';
 import type { Order } from '@/types';
 
 export function Dashboard() {
-  const { orders, loading } = useAllOrders();
+  const { orders, loading } = useOrdersFeed();
   const navigate = useNavigate();
 
   const stats = useMemo(() => computeStats(orders), [orders]);

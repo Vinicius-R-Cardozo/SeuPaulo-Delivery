@@ -13,6 +13,7 @@ import {
 import { Logo } from '@/components/ui/Logo';
 import { NotificationBell } from './NotificationBell';
 import { useAuth } from '@/contexts/AuthContext';
+import { OrdersProvider } from '@/contexts/OrdersContext';
 import { cn } from '@/utils/cn';
 
 const NAV = [
@@ -74,6 +75,7 @@ export function AdminLayout() {
   );
 
   return (
+    <OrdersProvider>
     <div className="min-h-screen bg-ink lg:flex">
       <aside className="hidden w-64 shrink-0 border-r border-ink-3 bg-ink-2 lg:block">
         {sidebar}
@@ -116,5 +118,6 @@ export function AdminLayout() {
         </main>
       </div>
     </div>
+    </OrdersProvider>
   );
 }

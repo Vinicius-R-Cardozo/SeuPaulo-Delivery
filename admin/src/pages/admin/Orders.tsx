@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, Bike, XCircle, MapPin, Store, UserPlus, Sparkles } from 'lucide-react';
-import { useAllOrders } from '@/hooks/useOrders';
+import { useOrdersFeed } from '@/contexts/OrdersContext';
 import { repository } from '@/services';
 import { useToast } from '@/providers/ToastProvider';
 import type { Driver, Order, OrderStatus } from '@/types';
@@ -26,7 +26,7 @@ const FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
 ];
 
 export function AdminOrders() {
-  const { orders, loading } = useAllOrders();
+  const { orders, loading } = useOrdersFeed();
   const toast = useToast();
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
   const [expanded, setExpanded] = useState<string | null>(null);

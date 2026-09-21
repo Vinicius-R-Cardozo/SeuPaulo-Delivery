@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Mail, Phone } from 'lucide-react';
 import { repository } from '@/services';
-import { useAllOrders } from '@/hooks/useOrders';
+import { useOrdersFeed } from '@/contexts/OrdersContext';
 import type { Profile } from '@/types';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatBRL, formatDate } from '@/utils/format';
 
 export function AdminCustomers() {
-  const { orders } = useAllOrders();
+  const { orders } = useOrdersFeed();
   const [customers, setCustomers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
