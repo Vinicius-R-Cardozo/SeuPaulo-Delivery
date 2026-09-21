@@ -344,6 +344,9 @@ class MockRepository implements DataRepository {
       etaMinutes: input.address
         ? estimateEtaMinutes({ lat: input.address.lat, lng: input.address.lng })
         : RESTAURANT.avgPrepMinutes,
+      // Código de entrega único gerado no ato do pedido (6 dígitos).
+      deliveryCode: String(Math.floor(100000 + Math.random() * 900000)),
+      deliveredAt: null,
       createdAt: iso,
       updatedAt: iso,
     };
@@ -361,7 +364,72 @@ class MockRepository implements DataRepository {
       body: `${order.code} — ${order.customerName} • R$ ${order.total.toFixed(2)}`,
       orderId: order.id,
     });
+    // Notificação persistente para o cliente (pedido recebido).
+    pushNotification({
+      userId: order.customerId,
+      audience: 'customer',
+      title: `Pedido ${order.code}`,
+      body: 'Pedido recebido! Estamos preparando tudo. 🟡',
+      orderId: order.id,
+    });
     return order;
+  }
+
+  async getDeliveryCode(orderId: string): Promise<string | null> {
+    const o = getState().orders.find((x) => x.id === orderId);
+    return o?.deliveryCode ?? null;
+  }
+
+  async confirmDelivery(orderId: string, code: string): Promise<{ ok: boolean; error?: string }> {
+    await wait(150);
+    const clean = (code || '').replace(/\D/g, '');
+    const session = await this.getSession();
+    const driverId = session?.profile.id ?? null;
+    let result: { ok: boolean; error?: string } = { ok: false, error: 'Pedido não encontrado.' };
+    mutate((s) => {
+      const o = s.orders.find((x) => x.id === orderId);
+      if (!o) return;
+      if (!o.driverId || o.driverId !== driverId) {
+        result = { ok: false, error: 'Você não é o entregador deste pedido.' };
+        return;
+      }
+      if (o.status === 'delivered') {
+        result = { ok: false, error: 'Pedido já foi entregue.' };
+        return;
+      }
+      if (o.status !== 'on_the_way' && o.status !== 'arrived') {
+        result = { ok: false, error: 'O pedido ainda não está em entrega.' };
+        return;
+      }
+      if (o.deliveryCode !== clean) {
+        result = { ok: false, error: 'Código de entrega inválido.' };
+        return;
+      }
+      const now = new Date().toISOString();
+      o.status = 'delivered';
+      o.deliveredAt = now;
+      o.updatedAt = now;
+      o.paymentStatus = 'approved';
+      o.etaMinutes = 0;
+      o.statusHistory.push({ status: 'delivered', at: now });
+      const d = s.drivers.find((dr) => dr.id === o.driverId);
+      if (d) d.totalDeliveries += 1;
+      result = { ok: true };
+    });
+    if (result.ok) {
+      stopRouteSim(orderId);
+      const o = getState().orders.find((x) => x.id === orderId);
+      if (o) {
+        pushNotification({
+          userId: o.customerId,
+          audience: 'customer',
+          title: `Pedido ${o.code}`,
+          body: 'Pedido entregue com sucesso ✅',
+          orderId: o.id,
+        });
+      }
+    }
+    return result;
   }
 
   async getOrder(id: string): Promise<Order | null> {
@@ -384,6 +452,10 @@ class MockRepository implements DataRepository {
 
   async updateOrderStatus(id: string, status: OrderStatus, note?: string): Promise<Order> {
     await wait(120);
+    // Regra de segurança: "entregue" só pela confirmação de código (confirmDelivery).
+    if (status === 'delivered') {
+      throw new Error('A entrega só pode ser confirmada com o código do cliente.');
+    }
     let updated: Order | undefined;
     mutate((s) => {
       const o = s.orders.find((x) => x.id === id);
@@ -391,13 +463,6 @@ class MockRepository implements DataRepository {
       o.status = status;
       o.updatedAt = new Date().toISOString();
       o.statusHistory.push({ status, at: o.updatedAt, note });
-      if (status === 'delivered') {
-        o.paymentStatus = 'approved';
-        o.driverLocation = o.address ? { lat: o.address.lat, lng: o.address.lng } : o.driverLocation;
-        o.etaMinutes = 0;
-        const d = s.drivers.find((dr) => dr.id === o.driverId);
-        if (d) d.totalDeliveries += 1;
-      }
       updated = o;
     });
     // Notifica o cliente sobre a mudança.
@@ -405,8 +470,8 @@ class MockRepository implements DataRepository {
       confirmed: 'Seu pedido foi confirmado! 🍻',
       preparing: 'A cozinha já está no fogo 👨‍🍳',
       ready: 'Pedido pronto! Já já sai pra entrega 📦',
-      on_the_way: 'Saiu para entrega 🛵',
-      delivered: 'Pedido entregue. Bom apetite! 🟢',
+      on_the_way: 'Seu pedido está a caminho 🛵',
+      arrived: 'O entregador chegou. Informe o código de entrega. 🔔',
       cancelled: 'Seu pedido foi cancelado.',
     };
     if (updated && labels[status]) {
@@ -419,7 +484,7 @@ class MockRepository implements DataRepository {
       });
     }
     if (status === 'on_the_way') startRouteSim(id);
-    if (status === 'delivered' || status === 'cancelled') stopRouteSim(id);
+    if (status === 'cancelled') stopRouteSim(id);
     return updated!;
   }
 

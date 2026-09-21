@@ -138,6 +138,7 @@ export type OrderStatus =
   | 'preparing' // 👨‍🍳 Em preparo
   | 'ready' // 📦 Pronto para entrega
   | 'on_the_way' // 🛵 Saiu para entrega
+  | 'arrived' // 🛎️ Motorista chegou (aguardando código)
   | 'delivered' // 🟢 Entregue
   | 'cancelled'; // ⚫ Cancelado
 
@@ -180,6 +181,9 @@ export interface Order {
   driverId: string | null;
   driverLocation: LatLng | null;
   etaMinutes: number | null;
+  /** Código de entrega (visível só para o cliente, perto da entrega). */
+  deliveryCode?: string | null;
+  deliveredAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -83,9 +83,13 @@ class CreateOrderInput(BaseModel):
 
 class StatusUpdate(BaseModel):
     status: Literal[
-        "received", "confirmed", "preparing", "ready", "on_the_way", "delivered", "cancelled"
+        "received", "confirmed", "preparing", "ready", "on_the_way", "arrived", "delivered", "cancelled"
     ]
     note: Optional[str] = None
+
+
+class DeliveryCodeInput(BaseModel):
+    code: str
 
 
 class AssignDriverInput(BaseModel):

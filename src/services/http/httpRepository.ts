@@ -244,6 +244,24 @@ export class HttpRepository implements DataRepository {
   cancelOrder(id: string): Promise<Order> {
     return this.request<Order>(`/orders/${id}/cancel`, { method: 'POST' });
   }
+  async getDeliveryCode(orderId: string): Promise<string | null> {
+    try {
+      const r = await this.request<{ code: string | null }>(`/orders/${orderId}/delivery-code`);
+      return r.code ?? null;
+    } catch {
+      return null;
+    }
+  }
+  async confirmDelivery(orderId: string, code: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      return await this.request<{ ok: boolean; error?: string }>(
+        `/orders/${orderId}/confirm-delivery`,
+        { method: 'POST', body: { code } },
+      );
+    } catch (err) {
+      return { ok: false, error: (err as Error).message };
+    }
+  }
   async updateDriverLocation(orderId: string, location: LatLng): Promise<void> {
     await this.request(`/orders/${orderId}/driver-location`, { method: 'POST', body: location });
   }

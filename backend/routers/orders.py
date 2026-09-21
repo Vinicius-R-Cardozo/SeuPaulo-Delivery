@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from database import db, save, new_id, now_iso, order_code, RESTAURANT
 from deps import get_current_user
 from geo import eta_minutes, build_route, point_along_route
-from schemas import CreateOrderInput, StatusUpdate, AssignDriverInput, LocationInput
+from schemas import CreateOrderInput, StatusUpdate, AssignDriverInput, LocationInput, DeliveryCodeInput
+import random
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -20,8 +21,8 @@ _STATUS_LABELS = {
     "confirmed": "Seu pedido foi confirmado! 🍻",
     "preparing": "A cozinha já está no fogo 👨‍🍳",
     "ready": "Pedido pronto! Já já sai pra entrega 📦",
-    "on_the_way": "Saiu para entrega 🛵",
-    "delivered": "Pedido entregue. Bom apetite! 🟢",
+    "on_the_way": "Seu pedido está a caminho 🛵",
+    "arrived": "O entregador chegou. Informe o código de entrega. 🔔",
     "cancelled": "Seu pedido foi cancelado.",
 }
 
@@ -93,6 +94,11 @@ def create_order(body: CreateOrderInput, user: dict = Depends(get_current_user))
         "paymentStatus": payment_status, "changeFor": body.changeFor, "status": "received",
         "statusHistory": [{"status": "received", "at": iso}],
         "driverId": None, "driverLocation": None, "etaMinutes": eta,
+        "deliveredAt": None,
+        # Código de entrega: prefixo "_" garante que _visible() NUNCA o exponha
+        # nas respostas de pedido (o motorista não vê). Só sai pelo endpoint próprio.
+        "_deliveryCode": f"{random.randint(0, 999999):06d}",
+        "_codeUsed": False,
         "createdAt": iso, "updatedAt": iso,
     }
     data["orders"].insert(0, order)
@@ -102,6 +108,8 @@ def create_order(body: CreateOrderInput, user: dict = Depends(get_current_user))
             c["usedCount"] += 1
     _notify("u-admin", "admin", "Novo pedido recebido",
             f"{order['code']} — {order['customerName']} • R$ {order['total']:.2f}", order["id"])
+    _notify(order["customerId"], "customer", f"Pedido {order['code']}",
+            "Pedido recebido! Estamos preparando tudo. 🟡", order["id"])
     save()
     return _visible(order)
 
@@ -146,21 +154,15 @@ def update_status(order_id: str, body: StatusUpdate, user: dict = Depends(get_cu
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Acesso negado.")
     if user["role"] == "driver" and o.get("driverId") != user["id"]:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Acesso negado.")
+    # Segurança: "entregue" só pela confirmação de código (endpoint próprio).
+    if body.status == "delivered":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "A entrega só pode ser confirmada com o código do cliente.")
 
     o["status"] = body.status
     o["updatedAt"] = now_iso()
     o["statusHistory"].append({"status": body.status, "at": o["updatedAt"], "note": body.note})
     if body.status == "on_the_way":
         o["_simStarted"] = time.time()
-    if body.status == "delivered":
-        o["paymentStatus"] = "approved"
-        o["etaMinutes"] = 0
-        o.pop("_simStarted", None)
-        if o.get("address"):
-            o["driverLocation"] = {"lat": o["address"]["lat"], "lng": o["address"]["lng"]}
-        d = next((x for x in data["drivers"] if x["id"] == o.get("driverId")), None)
-        if d:
-            d["totalDeliveries"] += 1
     if body.status == "cancelled":
         o.pop("_simStarted", None)
 
@@ -169,6 +171,54 @@ def update_status(order_id: str, body: StatusUpdate, user: dict = Depends(get_cu
         _notify(o["customerId"], "customer", f"Pedido {o['code']}", label, o["id"])
     save()
     return _visible(o)
+
+
+@router.get("/{order_id}/delivery-code")
+def get_delivery_code(order_id: str, user: dict = Depends(get_current_user)):
+    o = next((x for x in db()["orders"] if x["id"] == order_id), None)
+    if not o:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Pedido não encontrado.")
+    # Só o dono (cliente) ou admin podem ver o código — o motorista NUNCA.
+    if user["role"] != "admin" and o["customerId"] != user["id"]:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Acesso negado.")
+    return {"code": o.get("_deliveryCode")}
+
+
+@router.post("/{order_id}/confirm-delivery")
+def confirm_delivery(order_id: str, body: DeliveryCodeInput, user: dict = Depends(get_current_user)):
+    data = db()
+    o = next((x for x in data["orders"] if x["id"] == order_id), None)
+    if not o:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Pedido não encontrado.")
+    # Validação 100% no backend: motorista atribuído + código + status.
+    if o.get("driverId") is None or o.get("driverId") != user["id"]:
+        return {"ok": False, "error": "Você não é o entregador deste pedido."}
+    if o["status"] == "delivered":
+        return {"ok": False, "error": "Pedido já foi entregue."}
+    if o["status"] not in ("on_the_way", "arrived"):
+        return {"ok": False, "error": "O pedido ainda não está em entrega."}
+    if o.get("_codeUsed"):
+        return {"ok": False, "error": "Código indisponível."}
+    informado = "".join(ch for ch in (body.code or "") if ch.isdigit())
+    if o.get("_deliveryCode") != informado:
+        return {"ok": False, "error": "Código de entrega inválido."}
+
+    now = now_iso()
+    o["status"] = "delivered"
+    o["deliveredAt"] = now
+    o["paymentStatus"] = "approved"
+    o["etaMinutes"] = 0
+    o["_codeUsed"] = True
+    o.pop("_simStarted", None)
+    o["statusHistory"].append({"status": "delivered", "at": now})
+    if o.get("address"):
+        o["driverLocation"] = {"lat": o["address"]["lat"], "lng": o["address"]["lng"]}
+    d = next((x for x in data["drivers"] if x["id"] == o.get("driverId")), None)
+    if d:
+        d["totalDeliveries"] += 1
+    _notify(o["customerId"], "customer", f"Pedido {o['code']}", "Pedido entregue com sucesso ✅", o["id"])
+    save()
+    return {"ok": True}
 
 
 @router.post("/{order_id}/assign")

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Phone, Bike, Store, Clock, MapPin } from 'lucide-react';
+import { ArrowLeft, Phone, Bike, Store, Clock, MapPin, KeyRound, Copy, Check } from 'lucide-react';
 import { useOrder } from '@/hooks/useOrders';
 import { repository } from '@/services';
+import { useToast } from '@/providers/ToastProvider';
 import type { Driver } from '@/types';
 import { DeliveryMap } from '@/components/maps/DeliveryMap';
 import { FullScreenLoader } from '@/components/ui/Spinner';
@@ -17,12 +18,25 @@ import { cn } from '@/utils/cn';
 export function OrderTracking() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const { order, loading } = useOrder(id);
   const [driver, setDriver] = useState<Driver | null>(null);
+  const [deliveryCode, setDeliveryCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (order?.driverId) repository.getDriver(order.driverId).then(setDriver);
   }, [order?.driverId]);
+
+  // Busca o código de entrega quando o pedido está perto de ser entregue.
+  const nearDelivery =
+    order?.fulfillment === 'delivery' &&
+    (order.status === 'on_the_way' || order.status === 'arrived');
+  useEffect(() => {
+    if (nearDelivery && id && !deliveryCode) {
+      repository.getDeliveryCode(id).then(setDeliveryCode);
+    }
+  }, [nearDelivery, id, deliveryCode]);
 
   if (loading) return <FullScreenLoader label="Carregando seu pedido…" />;
   if (!order)
@@ -35,9 +49,18 @@ export function OrderTracking() {
     );
 
   const isDelivery = order.fulfillment === 'delivery';
-  const showMap = isDelivery && order.status === 'on_the_way' && order.address;
+  const showMap =
+    isDelivery && (order.status === 'on_the_way' || order.status === 'arrived') && order.address;
   const currentStep = ORDER_STATUS_META[order.status].step;
   const cancelled = order.status === 'cancelled';
+
+  const copyCode = () => {
+    if (!deliveryCode) return;
+    navigator.clipboard?.writeText(deliveryCode);
+    setCopied(true);
+    toast.success('Código copiado!');
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="pb-8">
@@ -114,6 +137,44 @@ export function OrderTracking() {
         </div>
       )}
 
+      {/* Código de entrega — destacado quando o pedido está perto de chegar */}
+      {nearDelivery && (
+        <div
+          className={cn(
+            'mx-4 mb-4 rounded-2xl border p-5',
+            order.status === 'arrived'
+              ? 'border-amber bg-amber/10'
+              : 'border-ink-3 bg-ink-2',
+          )}
+        >
+          <div className="flex items-center gap-2 text-sm font-semibold text-cream">
+            <KeyRound size={16} className="text-amber" />
+            Código de entrega
+          </div>
+          <p className="mt-1 text-xs text-cream-3">
+            {order.status === 'arrived'
+              ? 'O entregador chegou! Informe este código para ele finalizar a entrega.'
+              : 'Quando o entregador chegar, informe este código para confirmar a entrega.'}
+          </p>
+          <div className="mt-3 flex items-center gap-3">
+            <span className="flex-1 rounded-xl bg-ink px-4 py-3 text-center font-mono text-3xl font-bold tracking-[0.3em] text-amber">
+              {deliveryCode ?? '••••••'}
+            </span>
+            <button
+              onClick={copyCode}
+              disabled={!deliveryCode}
+              className="flex h-12 w-12 items-center justify-center rounded-xl border border-ink-4 text-cream hover:border-brand-2 disabled:opacity-40"
+              aria-label="Copiar código"
+            >
+              {copied ? <Check size={20} className="text-success" /> : <Copy size={20} />}
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] text-cream-3">
+            🔒 Nunca compartilhe o código antes de o entregador chegar.
+          </p>
+        </div>
+      )}
+
       {/* Timeline */}
       <div className="mx-4 mb-4 card p-5">
         <h2 className="display mb-4 text-base text-cream">Acompanhe seu pedido</h2>
@@ -123,7 +184,9 @@ export function OrderTracking() {
           </div>
         ) : (
           <ol className="relative space-y-5">
-            {ORDER_FLOW.filter((s) => (isDelivery ? true : s !== 'on_the_way')).map((status) => {
+            {ORDER_FLOW.filter((s) =>
+              isDelivery ? true : s !== 'on_the_way' && s !== 'arrived',
+            ).map((status) => {
               const meta = ORDER_STATUS_META[status];
               const event = order.statusHistory.find((e) => e.status === status);
               const done = meta.step <= currentStep;

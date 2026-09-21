@@ -142,6 +142,7 @@ function toOrder(r: Row): Order {
         ? { lat: Number(r.driver_lat), lng: Number(r.driver_lng) }
         : null,
     etaMinutes: r.eta_minutes != null ? Number(r.eta_minutes) : null,
+    deliveredAt: (r.delivered_at as string) ?? null,
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
@@ -495,6 +496,25 @@ class SupabaseRepository implements DataRepository {
 
   async cancelOrder(id: string, reason?: string): Promise<Order> {
     return this.updateOrderStatus(id, 'cancelled', reason);
+  }
+
+  async getDeliveryCode(orderId: string): Promise<string | null> {
+    const { data } = await this.sb
+      .from('order_delivery_codes')
+      .select('code')
+      .eq('order_id', orderId)
+      .maybeSingle();
+    return (data?.code as string) ?? null;
+  }
+
+  async confirmDelivery(orderId: string, code: string): Promise<{ ok: boolean; error?: string }> {
+    const { data, error } = await this.sb.rpc('confirm_delivery', {
+      p_order_id: orderId,
+      p_code: code,
+    });
+    if (error) return { ok: false, error: error.message };
+    const res = data as { ok: boolean; error?: string } | null;
+    return res ?? { ok: false, error: 'Resposta inválida do servidor.' };
   }
 
   async updateDriverLocation(orderId: string, location: LatLng): Promise<void> {
