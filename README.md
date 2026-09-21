@@ -117,6 +117,71 @@ automaticamente a linha em `profiles` com o papel escolhido.
 > Para criar o **admin**: cadastre-se normalmente e, no SQL Editor, rode
 > `update public.profiles set role='admin' where email='seu@email.com';`
 
+## 🐍 Backend FastAPI + ngrok
+
+Além do backend mock e do Supabase, o projeto traz uma **API própria em FastAPI +
+uvicorn** (pasta `backend/`), no mesmo estilo da referência LuxDrive (app + routers
++ schemas). Ela cobre todo o domínio (auth com senha em hash, cardápio, endereços,
+cupons, pedidos com **rastreamento ao vivo**, entregadores e notificações), com
+autorização por papel no servidor. Persistência em arquivo JSON (sem banco externo);
+em produção troca-se por Postgres/Supabase mantendo a forma dos dados.
+
+### Rodar o backend
+
+```bash
+cd backend
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# Linux/macOS:
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+Docs interativas em `http://localhost:8000/docs`. Contas de teste iguais às do app
+(senha `Senha123`). Para regenerar o seed do cardápio a partir do front:
+`npm run gen:seed:backend` (na raiz).
+
+### Apontar o app para o backend
+
+No `.env` (ou `.env.local`) do frontend:
+
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+Com `VITE_API_URL` definido, o app usa a API FastAPI (tem prioridade sobre o
+Supabase). Sem ela, cai no Supabase (se configurado) ou no mock.
+
+### Expor via ngrok (para o app Android / celular)
+
+O celular/emulador não enxerga o `localhost` do seu PC. O **ngrok** cria uma URL
+pública para o backend:
+
+```bash
+# 1. (uma vez) autentique o ngrok com SEU token de https://dashboard.ngrok.com
+ngrok config add-authtoken SEU_TOKEN
+
+# 2. com o backend rodando na 8000, abra o túnel
+ngrok http 8000
+```
+
+O ngrok mostra uma URL `https://xxxx.ngrok-free.app`. Coloque-a no `.env`:
+
+```env
+VITE_API_URL=https://xxxx.ngrok-free.app
+```
+
+Depois **reconstrua** e sincronize o app Android (a URL é embutida no build):
+
+```bash
+npm run android:sync    # build + cap sync android
+```
+
+> A URL gratuita do ngrok muda a cada execução — ao reabrir o túnel, atualize o
+> `VITE_API_URL` e rode `npm run android:sync` de novo.
+
 ## 📱 App Android (Android Studio)
 
 O projeto está empacotado com **Capacitor**, então roda como app Android nativo

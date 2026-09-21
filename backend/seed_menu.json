@@ -1,0 +1,962 @@
+{
+  "categories": [
+    {
+      "id": "c0",
+      "slug": "mais-pedidos",
+      "name": "Mais pedidos",
+      "emoji": "⭐",
+      "sortOrder": 0
+    },
+    {
+      "id": "c1",
+      "slug": "petiscos",
+      "name": "Petiscos",
+      "emoji": "🍟",
+      "sortOrder": 1
+    },
+    {
+      "id": "c2",
+      "slug": "porcoes",
+      "name": "Porções",
+      "emoji": "🍽️",
+      "sortOrder": 2
+    },
+    {
+      "id": "c3",
+      "slug": "pratos",
+      "name": "Pratos",
+      "emoji": "🥩",
+      "sortOrder": 3
+    },
+    {
+      "id": "c4",
+      "slug": "lanches",
+      "name": "Lanches",
+      "emoji": "🍔",
+      "sortOrder": 4
+    },
+    {
+      "id": "c5",
+      "slug": "drinks",
+      "name": "Drinks & Caipirinhas",
+      "emoji": "🍹",
+      "sortOrder": 5
+    },
+    {
+      "id": "c6",
+      "slug": "cervejas",
+      "name": "Cervejas",
+      "emoji": "🍺",
+      "sortOrder": 6
+    },
+    {
+      "id": "c7",
+      "slug": "bebidas",
+      "name": "Bebidas",
+      "emoji": "🥤",
+      "sortOrder": 7
+    }
+  ],
+  "products": [
+    {
+      "id": "p-torresmo",
+      "categorySlug": "petiscos",
+      "name": "Torresmo de Rolo",
+      "description": "Torresmo pururuca crocante, cortado na hora, com limão e pimenta de cheiro.",
+      "price": 32.9,
+      "image": "/prato.jpg",
+      "available": true,
+      "serves": "Serve 2",
+      "tags": [
+        "crocante",
+        "da casa"
+      ],
+      "popular": true,
+      "addonGroups": [
+        {
+          "id": "g-add-porcao",
+          "name": "Turbine sua porção",
+          "type": "multiple",
+          "required": false,
+          "min": 0,
+          "max": 3,
+          "options": [
+            {
+              "id": "p-bacon",
+              "name": "Bacon em cubos",
+              "price": 6
+            },
+            {
+              "id": "p-queijo",
+              "name": "Queijo coalho extra",
+              "price": 7
+            },
+            {
+              "id": "p-vinagrete",
+              "name": "Vinagrete",
+              "price": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-bolinho",
+      "categorySlug": "petiscos",
+      "name": "Bolinho de Feijoada",
+      "description": "Oito bolinhos recheados de feijoada, empanados e fritos, com geleia de pimenta.",
+      "price": 28.9,
+      "image": "/menu-comidas.jpg",
+      "available": true,
+      "serves": "Serve 2",
+      "popular": true,
+      "addonGroups": []
+    },
+    {
+      "id": "p-calabresa",
+      "categorySlug": "petiscos",
+      "name": "Calabresa Acebolada",
+      "description": "Linguiça calabresa artesanal, cebola caramelizada e pão de alho tostado.",
+      "price": 34.9,
+      "image": "/menu-comidas.jpg",
+      "available": true,
+      "serves": "Serve 2 a 3",
+      "addonGroups": [
+        {
+          "id": "g-add-porcao",
+          "name": "Turbine sua porção",
+          "type": "multiple",
+          "required": false,
+          "min": 0,
+          "max": 3,
+          "options": [
+            {
+              "id": "p-bacon",
+              "name": "Bacon em cubos",
+              "price": 6
+            },
+            {
+              "id": "p-queijo",
+              "name": "Queijo coalho extra",
+              "price": 7
+            },
+            {
+              "id": "p-vinagrete",
+              "name": "Vinagrete",
+              "price": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-dadinho",
+      "categorySlug": "petiscos",
+      "name": "Dadinho de Tapioca",
+      "description": "Cubos de tapioca com queijo coalho, crocantes por fora, com geleia de pimenta.",
+      "price": 26.9,
+      "image": "/prato.jpg",
+      "available": true,
+      "serves": "Serve 2",
+      "isNew": true,
+      "addonGroups": []
+    },
+    {
+      "id": "p-frango",
+      "categorySlug": "porcoes",
+      "name": "Frango a Passarinho",
+      "description": "Frango frito crocante no alho e óleo, salsinha e limão. O clássico do boteco.",
+      "price": 44.9,
+      "image": "/prato.jpg",
+      "available": true,
+      "serves": "Serve 3",
+      "popular": true,
+      "addonGroups": [
+        {
+          "id": "g-tam-porcao",
+          "name": "Tamanho",
+          "type": "single",
+          "required": true,
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "id": "t-meia",
+              "name": "Meia porção",
+              "price": 0
+            },
+            {
+              "id": "t-inteira",
+              "name": "Porção inteira",
+              "price": 18
+            }
+          ]
+        },
+        {
+          "id": "g-add-porcao",
+          "name": "Turbine sua porção",
+          "type": "multiple",
+          "required": false,
+          "min": 0,
+          "max": 3,
+          "options": [
+            {
+              "id": "p-bacon",
+              "name": "Bacon em cubos",
+              "price": 6
+            },
+            {
+              "id": "p-queijo",
+              "name": "Queijo coalho extra",
+              "price": 7
+            },
+            {
+              "id": "p-vinagrete",
+              "name": "Vinagrete",
+              "price": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-mandioca",
+      "categorySlug": "porcoes",
+      "name": "Mandioca com Queijo Coalho",
+      "description": "Mandioca frita seca por fora e macia por dentro, com queijo coalho grelhado.",
+      "price": 33.9,
+      "image": "/menu-comidas.jpg",
+      "available": true,
+      "serves": "Serve 2 a 3",
+      "addonGroups": [
+        {
+          "id": "g-tam-porcao",
+          "name": "Tamanho",
+          "type": "single",
+          "required": true,
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "id": "t-meia",
+              "name": "Meia porção",
+              "price": 0
+            },
+            {
+              "id": "t-inteira",
+              "name": "Porção inteira",
+              "price": 18
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-costela",
+      "categorySlug": "porcoes",
+      "name": "Costelinha ao Barbecue",
+      "description": "Costelinha suína assada lentamente, ao molho barbecue da casa, com farofa.",
+      "price": 58.9,
+      "image": "/prato.jpg",
+      "available": true,
+      "serves": "Serve 3",
+      "popular": true,
+      "addonGroups": [
+        {
+          "id": "g-add-porcao",
+          "name": "Turbine sua porção",
+          "type": "multiple",
+          "required": false,
+          "min": 0,
+          "max": 3,
+          "options": [
+            {
+              "id": "p-bacon",
+              "name": "Bacon em cubos",
+              "price": 6
+            },
+            {
+              "id": "p-queijo",
+              "name": "Queijo coalho extra",
+              "price": 7
+            },
+            {
+              "id": "p-vinagrete",
+              "name": "Vinagrete",
+              "price": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-batata",
+      "categorySlug": "porcoes",
+      "name": "Batata Frita com Cheddar e Bacon",
+      "description": "Batata rústica coberta com cheddar cremoso e bacon crocante.",
+      "price": 36.9,
+      "image": "/menu-comidas.jpg",
+      "available": true,
+      "serves": "Serve 2 a 3",
+      "addonGroups": [
+        {
+          "id": "g-tam-porcao",
+          "name": "Tamanho",
+          "type": "single",
+          "required": true,
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "id": "t-meia",
+              "name": "Meia porção",
+              "price": 0
+            },
+            {
+              "id": "t-inteira",
+              "name": "Porção inteira",
+              "price": 18
+            }
+          ]
+        },
+        {
+          "id": "g-add-porcao",
+          "name": "Turbine sua porção",
+          "type": "multiple",
+          "required": false,
+          "min": 0,
+          "max": 3,
+          "options": [
+            {
+              "id": "p-bacon",
+              "name": "Bacon em cubos",
+              "price": 6
+            },
+            {
+              "id": "p-queijo",
+              "name": "Queijo coalho extra",
+              "price": 7
+            },
+            {
+              "id": "p-vinagrete",
+              "name": "Vinagrete",
+              "price": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-picanha",
+      "categorySlug": "pratos",
+      "name": "Picanha na Chapa",
+      "description": "Picanha na chapa com arroz, feijão tropeiro, vinagrete e mandioca frita.",
+      "price": 72.9,
+      "image": "/prato.jpg",
+      "available": true,
+      "serves": "Serve 2",
+      "popular": true,
+      "addonGroups": [
+        {
+          "id": "g-ponto",
+          "name": "Ponto da carne",
+          "type": "single",
+          "required": true,
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "id": "o-malp",
+              "name": "Mal passada",
+              "price": 0
+            },
+            {
+              "id": "o-aop",
+              "name": "Ao ponto",
+              "price": 0
+            },
+            {
+              "id": "o-bemp",
+              "name": "Bem passada",
+              "price": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-feijoada",
+      "categorySlug": "pratos",
+      "name": "Feijoada do Seu Paulo",
+      "description": "Feijoada completa com arroz, couve, farofa, torresmo e laranja. Sábado é dia!",
+      "price": 49.9,
+      "image": "/menu-comidas.jpg",
+      "available": true,
+      "serves": "Serve 1 a 2",
+      "addonGroups": []
+    },
+    {
+      "id": "p-parmegiana",
+      "categorySlug": "pratos",
+      "name": "Filé à Parmegiana",
+      "description": "Filé empanado ao molho de tomate e queijo gratinado, com arroz e fritas.",
+      "price": 54.9,
+      "image": "/prato.jpg",
+      "available": true,
+      "serves": "Serve 2",
+      "addonGroups": [
+        {
+          "id": "g-ponto",
+          "name": "Ponto da carne",
+          "type": "single",
+          "required": true,
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "id": "o-malp",
+              "name": "Mal passada",
+              "price": 0
+            },
+            {
+              "id": "o-aop",
+              "name": "Ao ponto",
+              "price": 0
+            },
+            {
+              "id": "o-bemp",
+              "name": "Bem passada",
+              "price": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-xburguer",
+      "categorySlug": "lanches",
+      "name": "X-Burguer do Seu Paulo",
+      "description": "Blend 180g, queijo, alface, tomate, cebola e molho especial no pão brioche.",
+      "price": 29.9,
+      "image": "/menu-comidas.jpg",
+      "available": true,
+      "popular": true,
+      "addonGroups": [
+        {
+          "id": "g-ponto",
+          "name": "Ponto da carne",
+          "type": "single",
+          "required": true,
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "id": "o-malp",
+              "name": "Mal passada",
+              "price": 0
+            },
+            {
+              "id": "o-aop",
+              "name": "Ao ponto",
+              "price": 0
+            },
+            {
+              "id": "o-bemp",
+              "name": "Bem passada",
+              "price": 0
+            }
+          ]
+        },
+        {
+          "id": "g-add-lanche",
+          "name": "Adicionais",
+          "type": "multiple",
+          "required": false,
+          "min": 0,
+          "max": 6,
+          "options": [
+            {
+              "id": "a-bacon",
+              "name": "Bacon",
+              "price": 4
+            },
+            {
+              "id": "a-queijo",
+              "name": "Queijo extra",
+              "price": 3.5
+            },
+            {
+              "id": "a-cheddar",
+              "name": "Cheddar",
+              "price": 3.5
+            },
+            {
+              "id": "a-ovo",
+              "name": "Ovo",
+              "price": 2.5
+            },
+            {
+              "id": "a-catupiry",
+              "name": "Catupiry",
+              "price": 4
+            },
+            {
+              "id": "a-molho",
+              "name": "Molho especial da casa",
+              "price": 2
+            }
+          ]
+        },
+        {
+          "id": "g-rem-lanche",
+          "name": "Remover ingredientes",
+          "type": "multiple",
+          "required": false,
+          "min": 0,
+          "max": 4,
+          "options": [
+            {
+              "id": "r-cebola",
+              "name": "Sem cebola",
+              "price": 0
+            },
+            {
+              "id": "r-tomate",
+              "name": "Sem tomate",
+              "price": 0
+            },
+            {
+              "id": "r-alface",
+              "name": "Sem alface",
+              "price": 0
+            },
+            {
+              "id": "r-molho",
+              "name": "Sem molho",
+              "price": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-baconburguer",
+      "categorySlug": "lanches",
+      "name": "Bacon Duplo",
+      "description": "Dois blends 90g, cheddar, muito bacon e cebola caramelizada no pão brioche.",
+      "price": 37.9,
+      "image": "/menu-comidas.jpg",
+      "available": true,
+      "isNew": true,
+      "addonGroups": [
+        {
+          "id": "g-ponto",
+          "name": "Ponto da carne",
+          "type": "single",
+          "required": true,
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "id": "o-malp",
+              "name": "Mal passada",
+              "price": 0
+            },
+            {
+              "id": "o-aop",
+              "name": "Ao ponto",
+              "price": 0
+            },
+            {
+              "id": "o-bemp",
+              "name": "Bem passada",
+              "price": 0
+            }
+          ]
+        },
+        {
+          "id": "g-add-lanche",
+          "name": "Adicionais",
+          "type": "multiple",
+          "required": false,
+          "min": 0,
+          "max": 6,
+          "options": [
+            {
+              "id": "a-bacon",
+              "name": "Bacon",
+              "price": 4
+            },
+            {
+              "id": "a-queijo",
+              "name": "Queijo extra",
+              "price": 3.5
+            },
+            {
+              "id": "a-cheddar",
+              "name": "Cheddar",
+              "price": 3.5
+            },
+            {
+              "id": "a-ovo",
+              "name": "Ovo",
+              "price": 2.5
+            },
+            {
+              "id": "a-catupiry",
+              "name": "Catupiry",
+              "price": 4
+            },
+            {
+              "id": "a-molho",
+              "name": "Molho especial da casa",
+              "price": 2
+            }
+          ]
+        },
+        {
+          "id": "g-rem-lanche",
+          "name": "Remover ingredientes",
+          "type": "multiple",
+          "required": false,
+          "min": 0,
+          "max": 4,
+          "options": [
+            {
+              "id": "r-cebola",
+              "name": "Sem cebola",
+              "price": 0
+            },
+            {
+              "id": "r-tomate",
+              "name": "Sem tomate",
+              "price": 0
+            },
+            {
+              "id": "r-alface",
+              "name": "Sem alface",
+              "price": 0
+            },
+            {
+              "id": "r-molho",
+              "name": "Sem molho",
+              "price": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-frangoburguer",
+      "categorySlug": "lanches",
+      "name": "Frango Crispy",
+      "description": "Filé de frango empanado crocante, maionese temperada, alface e tomate.",
+      "price": 31.9,
+      "image": "/menu-comidas.jpg",
+      "available": true,
+      "addonGroups": [
+        {
+          "id": "g-add-lanche",
+          "name": "Adicionais",
+          "type": "multiple",
+          "required": false,
+          "min": 0,
+          "max": 6,
+          "options": [
+            {
+              "id": "a-bacon",
+              "name": "Bacon",
+              "price": 4
+            },
+            {
+              "id": "a-queijo",
+              "name": "Queijo extra",
+              "price": 3.5
+            },
+            {
+              "id": "a-cheddar",
+              "name": "Cheddar",
+              "price": 3.5
+            },
+            {
+              "id": "a-ovo",
+              "name": "Ovo",
+              "price": 2.5
+            },
+            {
+              "id": "a-catupiry",
+              "name": "Catupiry",
+              "price": 4
+            },
+            {
+              "id": "a-molho",
+              "name": "Molho especial da casa",
+              "price": 2
+            }
+          ]
+        },
+        {
+          "id": "g-rem-lanche",
+          "name": "Remover ingredientes",
+          "type": "multiple",
+          "required": false,
+          "min": 0,
+          "max": 4,
+          "options": [
+            {
+              "id": "r-cebola",
+              "name": "Sem cebola",
+              "price": 0
+            },
+            {
+              "id": "r-tomate",
+              "name": "Sem tomate",
+              "price": 0
+            },
+            {
+              "id": "r-alface",
+              "name": "Sem alface",
+              "price": 0
+            },
+            {
+              "id": "r-molho",
+              "name": "Sem molho",
+              "price": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-caipirinha",
+      "categorySlug": "drinks",
+      "name": "Caipirinha da Casa",
+      "description": "A caipirinha tradicional, do jeito que o boteco faz. Escolha a fruta e a dose.",
+      "price": 18.9,
+      "image": "/menu-caipirinhas.jpg",
+      "available": true,
+      "popular": true,
+      "addonGroups": [
+        {
+          "id": "g-dose",
+          "name": "Bebida",
+          "type": "single",
+          "required": true,
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "id": "d-cachaca",
+              "name": "Cachaça",
+              "price": 0
+            },
+            {
+              "id": "d-vodka",
+              "name": "Vodka",
+              "price": 4
+            },
+            {
+              "id": "d-saque",
+              "name": "Saquê",
+              "price": 3
+            }
+          ]
+        },
+        {
+          "id": "g-fruta",
+          "name": "Fruta",
+          "type": "single",
+          "required": true,
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "id": "f-limao",
+              "name": "Limão",
+              "price": 0
+            },
+            {
+              "id": "f-morango",
+              "name": "Morango",
+              "price": 3
+            },
+            {
+              "id": "f-maracuja",
+              "name": "Maracujá",
+              "price": 3
+            },
+            {
+              "id": "f-kiwi",
+              "name": "Kiwi",
+              "price": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-gin",
+      "categorySlug": "drinks",
+      "name": "Gin Tônica",
+      "description": "Gin, água tônica, zimbro e rodela de limão siciliano. Refrescante.",
+      "price": 26.9,
+      "image": "/menu-caipirinhas.jpg",
+      "available": true,
+      "addonGroups": []
+    },
+    {
+      "id": "p-batida",
+      "categorySlug": "drinks",
+      "name": "Batida de Coco",
+      "description": "Cachaça, leite condensado e coco. Cremosa e traiçoeira, do jeito certo.",
+      "price": 19.9,
+      "image": "/menu-caipirinhas.jpg",
+      "available": true,
+      "addonGroups": []
+    },
+    {
+      "id": "p-brahma",
+      "categorySlug": "cervejas",
+      "name": "Brahma 600ml",
+      "description": "Garrafa gelada de 600ml. Estupidamente gelada, como manda a tradição.",
+      "price": 12.9,
+      "image": "/canecas.jpg",
+      "available": true,
+      "popular": true,
+      "addonGroups": []
+    },
+    {
+      "id": "p-heineken",
+      "categorySlug": "cervejas",
+      "name": "Heineken Long Neck",
+      "description": "Long neck 330ml gelada.",
+      "price": 10.9,
+      "image": "/canecas.jpg",
+      "available": true,
+      "addonGroups": []
+    },
+    {
+      "id": "p-original",
+      "categorySlug": "cervejas",
+      "name": "Antarctica Original 600ml",
+      "description": "A cerveja pilsen puro malte, garrafa de 600ml.",
+      "price": 13.9,
+      "image": "/canecas.jpg",
+      "available": true,
+      "addonGroups": []
+    },
+    {
+      "id": "p-refri",
+      "categorySlug": "bebidas",
+      "name": "Refrigerante Lata",
+      "description": "Coca-Cola, Guaraná ou Fanta. Lata 350ml gelada.",
+      "price": 6.5,
+      "image": "/canecas.jpg",
+      "available": true,
+      "addonGroups": [
+        {
+          "id": "g-refri",
+          "name": "Sabor",
+          "type": "single",
+          "required": true,
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "id": "rf-coca",
+              "name": "Coca-Cola",
+              "price": 0
+            },
+            {
+              "id": "rf-guarana",
+              "name": "Guaraná Antarctica",
+              "price": 0
+            },
+            {
+              "id": "rf-fanta",
+              "name": "Fanta Laranja",
+              "price": 0
+            },
+            {
+              "id": "rf-cocazero",
+              "name": "Coca-Cola Zero",
+              "price": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-agua",
+      "categorySlug": "bebidas",
+      "name": "Água Mineral 500ml",
+      "description": "Com ou sem gás.",
+      "price": 4.5,
+      "image": "/canecas.jpg",
+      "available": true,
+      "addonGroups": [
+        {
+          "id": "g-agua",
+          "name": "Tipo",
+          "type": "single",
+          "required": true,
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "id": "ag-sem",
+              "name": "Sem gás",
+              "price": 0
+            },
+            {
+              "id": "ag-com",
+              "name": "Com gás",
+              "price": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p-sucos",
+      "categorySlug": "bebidas",
+      "name": "Suco Natural 500ml",
+      "description": "Feito na hora. Laranja, maracujá, abacaxi ou limão.",
+      "price": 11.9,
+      "image": "/menu-caipirinhas.jpg",
+      "available": true,
+      "addonGroups": [
+        {
+          "id": "g-suco",
+          "name": "Sabor",
+          "type": "single",
+          "required": true,
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "id": "su-laranja",
+              "name": "Laranja",
+              "price": 0
+            },
+            {
+              "id": "su-maracuja",
+              "name": "Maracujá",
+              "price": 0
+            },
+            {
+              "id": "su-abacaxi",
+              "name": "Abacaxi",
+              "price": 0
+            },
+            {
+              "id": "su-limao",
+              "name": "Limão",
+              "price": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
