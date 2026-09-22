@@ -33,12 +33,15 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { formatDate, formatDateTime } from '@/utils/format';
 import { cn } from '@/utils/cn';
 
-const FILTERS: { value: DriverApplicationStatus | 'all'; label: string }[] = [
+type FilterValue = DriverApplicationStatus | 'all' | 'to_confirm';
+
+const FILTERS: { value: FilterValue; label: string }[] = [
   { value: 'all', label: 'Todas' },
+  { value: 'to_confirm', label: '🟢 A confirmar' },
   { value: 'manual_review', label: '🟠 Revisão manual' },
   { value: 'under_analysis', label: '🟡 Em análise' },
   { value: 'needs_resubmission', label: '🔁 Reenvio' },
-  { value: 'approved', label: '🟢 Aprovadas' },
+  { value: 'approved', label: '✅ Aprovadas' },
   { value: 'rejected', label: '🔴 Reprovadas' },
 ];
 
@@ -89,7 +92,7 @@ export function DriverApplications() {
   const toast = useToast();
   const [apps, setApps] = useState<DriverApplication[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<DriverApplicationStatus | 'all'>('all');
+  const [filter, setFilter] = useState<FilterValue>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [params, setParams] = useSearchParams();
 
@@ -127,10 +130,12 @@ export function DriverApplications() {
     }
   };
 
-  const filtered = useMemo(
-    () => (filter === 'all' ? apps : apps.filter((a) => a.status === filter)),
-    [apps, filter],
-  );
+  const filtered = useMemo(() => {
+    if (filter === 'all') return apps;
+    if (filter === 'to_confirm')
+      return apps.filter((a) => a.status === 'approved' && !a.adminConfirmed);
+    return apps.filter((a) => a.status === filter);
+  }, [apps, filter]);
   const selected = apps.find((a) => a.id === selectedId) ?? null;
 
   if (selected) {
@@ -148,7 +153,10 @@ export function DriverApplications() {
   }
 
   const pendingCount = apps.filter(
-    (a) => a.status === 'manual_review' || a.status === 'under_analysis',
+    (a) =>
+      a.status === 'manual_review' ||
+      a.status === 'under_analysis' ||
+      (a.status === 'approved' && !a.adminConfirmed),
   ).length;
 
   return (
@@ -202,7 +210,14 @@ export function DriverApplications() {
                     <p className="text-xs text-cream-3">{formatCPF(a.cpf)}</p>
                   </div>
                 </div>
-                <StatusChip status={a.status} />
+                <div className="flex flex-col items-end gap-1">
+                  <StatusChip status={a.status} />
+                  {a.status === 'approved' && !a.adminConfirmed && (
+                    <span className="rounded-full bg-amber/15 px-2 py-0.5 text-[10px] font-semibold text-amber">
+                      a confirmar
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="mt-3 flex items-center justify-between text-xs text-cream-3">
                 <span>{a.vehicle === 'moto' ? 'Moto' : 'Bicicleta'}</span>
@@ -282,7 +297,10 @@ function ApplicationDetail({
     void decide({ action: reasonModal!, reason: reason.trim() });
   };
 
-  const done = app.status === 'approved' || app.status === 'rejected';
+  // Aprovado automaticamente e ainda aguardando a mini-aprovação do admin.
+  const awaitingConfirm = app.status === 'approved' && !app.adminConfirmed;
+  // Sem mais ações: reprovado, ou aprovado E já confirmado pelo admin.
+  const done = app.status === 'rejected' || (app.status === 'approved' && app.adminConfirmed);
   const analysis = app.autoAnalysis;
 
   return (
@@ -306,6 +324,19 @@ function ApplicationDetail({
         </div>
         <StatusChip status={app.status} />
       </div>
+
+      {/* Aprovado automaticamente — aguardando a mini-aprovação do admin */}
+      {awaitingConfirm && (
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-success/30 bg-success/5 p-4 text-sm">
+          <ShieldCheck size={18} className="mt-0.5 shrink-0 text-success" />
+          <div>
+            <p className="font-semibold text-cream">Liberado automaticamente pela triagem</p>
+            <p className="text-cream-3">
+              O entregador já pode operar. Confira os documentos e confirme o cadastro (mini-aprovação).
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Veredito da triagem (padrão Lux: verdito + motivos + checagem oficial) */}
       {analysis && (
@@ -505,21 +536,42 @@ function ApplicationDetail({
       {/* Ações */}
       {!done && (
         <div className="sticky bottom-0 mt-5 flex flex-wrap gap-2 border-t border-ink-3 bg-ink/90 py-4 backdrop-blur">
-          <Button
-            variant="primary"
-            leftIcon={<Check size={16} />}
-            loading={busy}
-            onClick={() => decide({ action: 'approve' })}
-          >
-            Aprovar cadastro
-          </Button>
-          <Button variant="ghost" leftIcon={<RefreshCw size={16} />} onClick={() => setReasonModal('request_resubmission')}>
-            Solicitar reenvio
-          </Button>
+          {awaitingConfirm ? (
+            <Button
+              variant="primary"
+              leftIcon={<ShieldCheck size={16} />}
+              loading={busy}
+              onClick={() => decide({ action: 'confirm' })}
+            >
+              Confirmar aprovação
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              leftIcon={<Check size={16} />}
+              loading={busy}
+              onClick={() => decide({ action: 'approve' })}
+            >
+              Aprovar cadastro
+            </Button>
+          )}
+          {!awaitingConfirm && (
+            <Button variant="ghost" leftIcon={<RefreshCw size={16} />} onClick={() => setReasonModal('request_resubmission')}>
+              Solicitar reenvio
+            </Button>
+          )}
           <Button variant="danger" leftIcon={<X size={16} />} onClick={() => setReasonModal('reject')}>
             Reprovar
           </Button>
         </div>
+      )}
+
+      {done && (
+        <p className="mt-5 border-t border-ink-3 py-4 text-center text-sm text-cream-3">
+          {app.status === 'approved'
+            ? '✅ Cadastro aprovado e confirmado.'
+            : '🔴 Cadastro reprovado.'}
+        </p>
       )}
 
       {/* Modal de motivo */}

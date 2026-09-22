@@ -167,6 +167,7 @@ function toApplication(r: Row): DriverApplication {
     userId: r.user_id as string,
     vehicle: r.vehicle as DriverApplication['vehicle'],
     status: r.status as DriverApplication['status'],
+    adminConfirmed: Boolean(r.admin_confirmed),
     fullName: r.full_name as string,
     cpf: (r.cpf as string) ?? '',
     rg: (r.rg as string) ?? '',

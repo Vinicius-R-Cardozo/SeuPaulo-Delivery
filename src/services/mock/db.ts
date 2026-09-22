@@ -221,6 +221,7 @@ function seed(): MockState {
     userId: driverPending.id,
     vehicle: 'moto',
     status: 'manual_review',
+    adminConfirmed: false,
     fullName: driverPending.fullName,
     cpf: '39053344705',
     rg: 'MG-12.345.678',

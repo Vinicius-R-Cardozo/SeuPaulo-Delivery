@@ -105,16 +105,71 @@ class StubVehicleService implements VehicleVerificationService {
   }
 }
 
+/** DD/MM/AAAA → Date (meia-noite local) ou null. */
+function parseBrDate(v?: string): Date | null {
+  const d = (v ?? '').replace(/\D/g, '');
+  if (d.length !== 8) return null;
+  const date = new Date(Number(d.slice(4, 8)), Number(d.slice(2, 4)) - 1, Number(d.slice(0, 2)));
+  return isNaN(date.getTime()) ? null : date;
+}
+
 /**
- * Regra de triagem:
- * - qualquer checagem "fail" → recomenda revisão manual (nunca reprova sozinho
- *   por não ter conseguido verificar; reprovação por conteúdo é decisão humana);
- * - sem fornecedor real, a recomendação nunca é aprovação automática.
+ * Portão de auto-aprovação. Só olha o que é VERIFICÁVEL de forma objetiva
+ * (documentos enviados, validade/categoria da CNH, placa). A autenticidade das
+ * imagens e o rosto continuam com o admin, na mini-aprovação. Se qualquer
+ * critério falhar/for desconhecido → revisão manual (nunca reprova sozinho).
  */
-function decide(checks: VerificationCheck[]): AutoAnalysisResult['recommendation'] {
-  const hasFail = checks.some((c) => c.status === 'fail');
-  // Só encaminha para revisão manual. Aprovação automática exige fornecedor real.
-  return hasFail ? 'manual_review' : 'manual_review';
+function buildGate(bundle: AnalysisBundle): { checks: VerificationCheck[]; pass: boolean } {
+  const has = (k: string) => bundle.files.some((f) => f.kind === k);
+  const required =
+    bundle.vehicle === 'moto'
+      ? ['selfie', 'id_document', 'cnh_front', 'cnh_back', 'vehicle_doc', 'vehicle_photo', 'plate_photo']
+      : ['selfie', 'id_document', 'bike_photo'];
+  const checks: VerificationCheck[] = [];
+  let pass = true;
+
+  const docsOk = required.every(has);
+  checks.push({
+    id: 'gate:docs',
+    label: 'Documentos obrigatórios enviados',
+    status: docsOk ? 'pass' : 'fail',
+    detail: docsOk ? undefined : 'Faltam documentos obrigatórios.',
+  });
+  if (!docsOk) pass = false;
+
+  if (bundle.vehicle === 'moto') {
+    const cat = (bundle.claimed.cnh?.category ?? '').toUpperCase();
+    const catOk = /^A/.test(cat);
+    checks.push({
+      id: 'gate:cnh_categoria',
+      label: 'Categoria da CNH habilita moto',
+      status: catOk ? 'pass' : 'warn',
+      detail: catOk ? `Categoria ${cat}.` : 'Categoria informada não habilita moto.',
+    });
+    if (!catOk) pass = false;
+
+    const exp = parseBrDate(bundle.claimed.cnh?.expiresAt);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expOk = exp != null && exp >= today;
+    checks.push({
+      id: 'gate:cnh_validade',
+      label: 'CNH dentro da validade',
+      status: expOk ? 'pass' : exp == null ? 'skipped' : 'fail',
+      detail: expOk ? undefined : exp == null ? 'Validade não informada.' : 'CNH vencida.',
+    });
+    if (!expOk) pass = false;
+
+    const plateOk = (bundle.claimed.moto?.plate ?? '').replace(/\W/g, '').length >= 7;
+    checks.push({
+      id: 'gate:placa',
+      label: 'Placa da moto informada',
+      status: plateOk ? 'pass' : 'warn',
+    });
+    if (!plateOk) pass = false;
+  }
+
+  return { checks, pass };
 }
 
 class StubProvider implements VerificationProvider {
@@ -161,8 +216,14 @@ class StubProvider implements VerificationProvider {
       checks.push(...vehicle.checks);
     }
 
+    // Portão objetivo de auto-aprovação (documentos + validade/categoria/placa).
+    const gate = buildGate(bundle);
+    checks.unshift(...gate.checks);
+
     return {
-      recommendation: decide(checks),
+      // Passou nos critérios verificáveis → aprova automático (provisório, ainda
+      // vai para a mini-aprovação do admin). Senão, revisão manual.
+      recommendation: gate.pass ? 'auto_approve' : 'manual_review',
       confidence: null,
       checks,
       provider: this.name,

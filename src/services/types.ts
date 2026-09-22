@@ -53,7 +53,9 @@ export interface DriverRegistration {
 }
 
 export interface ReviewDecision {
-  action: 'approve' | 'reject' | 'request_resubmission';
+  // 'confirm' = mini-aprovação: confirma um cadastro que já foi aprovado
+  // automaticamente pela triagem (o entregador já está operando).
+  action: 'approve' | 'confirm' | 'reject' | 'request_resubmission';
   reason?: string;
 }
 

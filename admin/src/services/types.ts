@@ -61,7 +61,8 @@ export interface DriverRegistration {
 }
 
 export interface ReviewDecision {
-  action: 'approve' | 'reject' | 'request_resubmission';
+  // 'confirm' = mini-aprovação de um cadastro já aprovado automaticamente.
+  action: 'approve' | 'confirm' | 'reject' | 'request_resubmission';
   reason?: string;
 }
 

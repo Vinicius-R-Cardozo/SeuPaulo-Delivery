@@ -310,6 +310,8 @@ export interface DriverApplication {
   userId: string;
   vehicle: DeliveryVehicle;
   status: DriverApplicationStatus;
+  /** true = confirmado por um admin; false = aprovado automaticamente e aguardando a mini-aprovação. */
+  adminConfirmed: boolean;
   fullName: string;
   cpf: string;
   rg: string;

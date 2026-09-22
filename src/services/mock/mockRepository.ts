@@ -638,6 +638,8 @@ class MockRepository implements DataRepository {
       userId: profile.id,
       vehicle: input.vehicle,
       status,
+      // Auto-aprovado pela triagem ainda aguarda a mini-aprovação do admin.
+      adminConfirmed: false,
       fullName: profile.fullName,
       cpf: input.cpf,
       rg: input.rg,
@@ -684,7 +686,10 @@ class MockRepository implements DataRepository {
       userId: 'u-admin',
       audience: 'admin',
       title: 'Nova solicitação de entregador',
-      body: `${profile.fullName} (${input.vehicle === 'moto' ? 'Moto' : 'Bicicleta'}) enviou o cadastro.`,
+      body:
+        status === 'approved'
+          ? `${profile.fullName} passou na triagem e já está operando — confirme o cadastro.`
+          : `${profile.fullName} (${input.vehicle === 'moto' ? 'Moto' : 'Bicicleta'}) enviou o cadastro para análise.`,
     });
     localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: profile.id }));
     return { profile, application };
@@ -708,11 +713,12 @@ class MockRepository implements DataRepository {
     adminId: string,
   ): Promise<DriverApplication> {
     await wait(200);
-    if (decision.action !== 'approve' && !decision.reason?.trim()) {
+    const needsReason = decision.action === 'reject' || decision.action === 'request_resubmission';
+    if (needsReason && !decision.reason?.trim()) {
       throw new Error('Informe o motivo da decisão.');
     }
     const nextStatus: DriverApplicationStatus =
-      decision.action === 'approve'
+      decision.action === 'approve' || decision.action === 'confirm'
         ? 'approved'
         : decision.action === 'reject'
           ? 'rejected'
@@ -723,18 +729,24 @@ class MockRepository implements DataRepository {
       if (!app) throw new Error('Solicitação não encontrada.');
       const now = new Date().toISOString();
       app.status = nextStatus;
+      // Aprovar/confirmar marca a mini-aprovação como feita pelo admin.
+      if (decision.action === 'approve' || decision.action === 'confirm') {
+        app.adminConfirmed = true;
+      }
       app.updatedAt = now;
       app.reviews.push({
         at: now,
         by: adminId,
         action:
-          decision.action === 'approve'
-            ? 'approved'
-            : decision.action === 'reject'
-              ? 'rejected'
-              : 'resubmission_requested',
+          decision.action === 'reject'
+            ? 'rejected'
+            : decision.action === 'request_resubmission'
+              ? 'resubmission_requested'
+              : 'approved',
         status: nextStatus,
-        reason: decision.reason?.trim(),
+        reason:
+          decision.reason?.trim() ??
+          (decision.action === 'confirm' ? 'Aprovação confirmada pelo administrador.' : undefined),
       });
       const driver = s.drivers.find((d) => d.id === app.userId);
       if (driver) {
@@ -744,20 +756,23 @@ class MockRepository implements DataRepository {
       updated = app;
     });
 
-    const messages: Record<DriverApplicationStatus, string> = {
-      approved: 'Cadastro aprovado! Você já pode receber entregas. 🟢',
-      rejected: `Cadastro reprovado. ${decision.reason ?? ''}`.trim(),
-      needs_resubmission: `Precisamos de um novo envio. ${decision.reason ?? ''}`.trim(),
-      pending_documents: 'Faltam documentos no seu cadastro.',
-      under_analysis: 'Seu cadastro está em análise.',
-      manual_review: 'Seu cadastro está em análise.',
-    };
-    pushNotification({
-      userId: updated!.userId,
-      audience: 'driver',
-      title: 'Status do cadastro atualizado',
-      body: messages[nextStatus],
-    });
+    // 'confirm' não muda a situação do entregador (já estava operando) — não avisa.
+    if (decision.action !== 'confirm') {
+      const messages: Record<DriverApplicationStatus, string> = {
+        approved: 'Cadastro aprovado! Você já pode receber entregas. 🟢',
+        rejected: `Cadastro reprovado. ${decision.reason ?? ''}`.trim(),
+        needs_resubmission: `Precisamos de um novo envio. ${decision.reason ?? ''}`.trim(),
+        pending_documents: 'Faltam documentos no seu cadastro.',
+        under_analysis: 'Seu cadastro está em análise.',
+        manual_review: 'Seu cadastro está em análise.',
+      };
+      pushNotification({
+        userId: updated!.userId,
+        audience: 'driver',
+        title: 'Status do cadastro atualizado',
+        body: messages[nextStatus],
+      });
+    }
     return updated!;
   }
 

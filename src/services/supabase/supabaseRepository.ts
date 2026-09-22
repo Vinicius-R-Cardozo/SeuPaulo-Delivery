@@ -169,6 +169,7 @@ function toApplication(r: Row): DriverApplication {
     userId: r.user_id as string,
     vehicle: r.vehicle as DriverApplication['vehicle'],
     status: r.status as DriverApplication['status'],
+    adminConfirmed: Boolean(r.admin_confirmed),
     fullName: r.full_name as string,
     cpf: (r.cpf as string) ?? '',
     rg: (r.rg as string) ?? '',
@@ -697,21 +698,23 @@ class SupabaseRepository implements DataRepository {
         moto: input.moto ? { ...input.moto } : undefined,
       },
     });
-    // Sem fornecedor real, a candidatura sempre vai para revisão manual.
-    const status = 'manual_review';
+    // A candidatura entra como revisão manual; a promoção para aprovado
+    // (provisório) é decidida pelo SERVIDOR, na RPC auto_approve_application,
+    // que reconfere os dados guardados — o cliente não decide o status.
     const reviews: ReviewEvent[] = [
       { at: nowIso, by: userId, action: 'submitted', status: 'under_analysis' },
-      { at: nowIso, by: 'auto', action: 'auto_analysis', status },
+      { at: nowIso, by: 'auto', action: 'auto_analysis', status: 'manual_review' },
     ];
 
     // 5. Abre a candidatura. RLS garante user_id = auth.uid() e impede status
-    //    aprovado/reprovado no insert (isso só via review_driver_application).
+    //    aprovado/reprovado no insert (isso só via RPC SECURITY DEFINER).
     const { data: appRow, error: appErr } = await this.sb
       .from('driver_applications')
       .insert({
         user_id: userId,
         vehicle: input.vehicle,
-        status,
+        status: 'manual_review',
+        admin_confirmed: false,
         full_name: input.fullName,
         cpf: input.cpf.replace(/\D/g, ''),
         rg: input.rg,
@@ -735,8 +738,18 @@ class SupabaseRepository implements DataRepository {
       throw new Error(appErr.message);
     }
 
+    // 6. Auto-aprovação provisória: o servidor reconfere e, se passar, libera o
+    //    entregador na hora (ainda com a mini-aprovação pendente do admin).
+    let finalRow = appRow;
+    if (analysis.recommendation === 'auto_approve') {
+      const { data: promoted, error: rpcErr } = await this.sb.rpc('auto_approve_application', {
+        p_id: appRow.id,
+      });
+      if (!rpcErr && promoted) finalRow = promoted as Row;
+    }
+
     const profile = await this.profileFromUser(userId);
-    return { profile, application: toApplication(appRow) };
+    return { profile, application: toApplication(finalRow) };
   }
 
   async getDriverApplication(userId: string): Promise<DriverApplication | null> {

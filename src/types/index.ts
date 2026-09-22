@@ -327,6 +327,12 @@ export interface DriverApplication {
   userId: string;
   vehicle: DeliveryVehicle;
   status: DriverApplicationStatus;
+  /**
+   * Só faz sentido quando status = 'approved'. `false` = aprovado
+   * automaticamente pela triagem e ainda aguardando a confirmação do admin
+   * (mini-aprovação); `true` = confirmado por um administrador.
+   */
+  adminConfirmed: boolean;
 
   // Dados pessoais
   fullName: string;
