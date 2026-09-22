@@ -14,10 +14,47 @@ import type {
   PaymentMethod,
   LatLng,
   DriverStatus,
+  DeliveryVehicle,
+  DriverApplication,
+  ApplicationAddress,
+  CnhInfo,
+  MotoInfo,
+  BikeInfo,
 } from '@/types';
+import type { CapturedMedia } from '@/components/onboarding/capture';
 
 export interface AuthSession {
   profile: Profile;
+}
+
+/* ------------------ Cadastro de entregador (onboarding) ------------------ */
+
+export interface DriverApplicationInput {
+  /** senha da nova conta do entregador */
+  password: string;
+  vehicle: DeliveryVehicle;
+  fullName: string;
+  cpf: string;
+  rg: string;
+  birthDate: string;
+  email: string;
+  phone: string;
+  address: ApplicationAddress;
+  cnh?: CnhInfo | null;
+  moto?: MotoInfo | null;
+  bike?: BikeInfo | null;
+  /** arquivos capturados (selfie, documentos, fotos do veículo) com o binário */
+  documents: CapturedMedia[];
+}
+
+export interface DriverRegistration {
+  profile: Profile;
+  application: DriverApplication;
+}
+
+export interface ReviewDecision {
+  action: 'approve' | 'reject' | 'request_resubmission';
+  reason?: string;
 }
 
 export interface SignUpInput {
@@ -109,6 +146,22 @@ export interface DataRepository {
   setDriverStatus(id: string, status: DriverStatus): Promise<Driver>;
   setDriverOnline(id: string, online: boolean): Promise<Driver>;
   setDriverLocation(id: string, location: LatLng): Promise<Driver>;
+
+  /* ---- Cadastro/onboarding de entregador ---- */
+  /** Cria a conta, envia os documentos e abre a candidatura para análise. */
+  registerDriver(input: DriverApplicationInput): Promise<DriverRegistration>;
+  /** Candidatura do próprio entregador (acompanhamento no app). */
+  getDriverApplication(userId: string): Promise<DriverApplication | null>;
+  /** Todas as candidaturas (painel administrativo). */
+  getDriverApplications(): Promise<DriverApplication[]>;
+  /** Decisão do administrador; registra no histórico de auditoria. */
+  reviewDriverApplication(
+    id: string,
+    decision: ReviewDecision,
+    adminId: string,
+  ): Promise<DriverApplication>;
+  /** URL temporária e autenticada para o admin ver um documento privado. */
+  getDocumentUrl(path: string): Promise<string | null>;
 
   /* ---- Notificações ---- */
   getNotifications(userId: string): Promise<AppNotification[]>;

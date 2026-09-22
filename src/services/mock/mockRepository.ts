@@ -1,20 +1,27 @@
 import type {
   Address,
   AppNotification,
+  ApplicationDocument,
   Category,
   Coupon,
   Driver,
+  DriverApplication,
+  DriverApplicationStatus,
   DriverStatus,
   LatLng,
   Order,
   OrderStatus,
   Product,
   Profile,
+  VehicleType,
 } from '@/types';
 import type {
   AuthSession,
   CreateOrderInput,
   DataRepository,
+  DriverApplicationInput,
+  DriverRegistration,
+  ReviewDecision,
   SignUpInput,
   Unsubscribe,
 } from '@/services/types';
@@ -22,6 +29,17 @@ import { CATEGORIES_SEED, getState, mutate, subscribe } from './db';
 import { RESTAURANT } from '@/data/restaurant';
 import { uid, orderCode } from '@/utils/id';
 import { buildRoute, estimateEtaMinutes, pointAlongRoute } from '@/utils/geo';
+import { verificationProvider } from '@/services/verification';
+import { toCapturedFile } from '@/components/onboarding/capture';
+
+/** Recomendação da triagem → status inicial da candidatura. */
+function statusFromRecommendation(
+  rec: 'auto_approve' | 'manual_review' | 'reject',
+): DriverApplicationStatus {
+  if (rec === 'auto_approve') return 'approved';
+  if (rec === 'reject') return 'rejected';
+  return 'manual_review';
+}
 
 const SESSION_KEY = 'spd_session_v1';
 const wait = (ms = 220) => new Promise((r) => setTimeout(r, ms));
@@ -570,6 +588,182 @@ class MockRepository implements DataRepository {
       updated = d;
     });
     return updated!;
+  }
+
+  /* ---- Cadastro/onboarding de entregador ---- */
+  async registerDriver(input: DriverApplicationInput): Promise<DriverRegistration> {
+    await wait(400);
+    const emailKey = input.email.trim().toLowerCase();
+    const cpfKey = input.cpf.replace(/\D/g, '');
+    const st = getState();
+    if (st.profiles.some((p) => p.email.toLowerCase() === emailKey)) {
+      throw new Error('Já existe uma conta com este e-mail.');
+    }
+    if (st.driverApplications.some((a) => a.cpf.replace(/\D/g, '') === cpfKey)) {
+      throw new Error('Já existe um cadastro de entregador com este CPF.');
+    }
+
+    const iso = new Date().toISOString();
+    const profile: Profile = {
+      id: uid('u'),
+      role: 'driver',
+      fullName: input.fullName.trim(),
+      email: input.email.trim(),
+      phone: input.phone.trim(),
+      createdAt: iso,
+    };
+
+    // No mock, guardamos a própria dataUrl como "caminho" do arquivo.
+    const documents: ApplicationDocument[] = input.documents.map((m) => ({
+      kind: m.kind,
+      path: m.dataUrl,
+      uploadedAt: iso,
+      ocr: null,
+    }));
+
+    // Triagem automática (metadados dos arquivos; nunca afirma autenticidade).
+    const analysis = await verificationProvider.analyze({
+      vehicle: input.vehicle,
+      files: input.documents.map(toCapturedFile),
+      claimed: {
+        cnh: input.cnh ? { ...input.cnh } : undefined,
+        moto: input.moto ? { ...input.moto } : undefined,
+      },
+    });
+    const status = statusFromRecommendation(analysis.recommendation);
+
+    const vehicleType: VehicleType = input.vehicle;
+    const application: DriverApplication = {
+      id: uid('app'),
+      userId: profile.id,
+      vehicle: input.vehicle,
+      status,
+      fullName: profile.fullName,
+      cpf: input.cpf,
+      rg: input.rg,
+      birthDate: input.birthDate,
+      email: profile.email,
+      phone: profile.phone,
+      address: input.address,
+      cnh: input.cnh ?? null,
+      moto: input.moto ?? null,
+      bike: input.bike ?? null,
+      documents,
+      autoAnalysis: analysis,
+      reviews: [
+        { at: iso, by: profile.id, action: 'submitted', status: 'under_analysis' },
+        { at: iso, by: 'auto', action: 'auto_analysis', status },
+      ],
+      createdAt: iso,
+      updatedAt: iso,
+    };
+
+    mutate((s) => {
+      s.profiles.push(profile);
+      s.credentials[profile.email] = input.password;
+      s.driverApplications.unshift(application);
+      s.drivers.push({
+        id: profile.id,
+        vehicleType,
+        plate: (input.moto?.plate ?? '').toUpperCase() || 'N/A',
+        model:
+          input.vehicle === 'moto'
+            ? `${input.moto?.brand ?? ''} ${input.moto?.model ?? ''}`.trim()
+            : `Bicicleta ${input.bike?.kind === 'eletrica' ? 'elétrica' : 'convencional'}`,
+        color: (input.moto?.color ?? input.bike?.color ?? '').trim(),
+        status: status === 'approved' ? 'approved' : 'pending',
+        online: false,
+        location: null,
+        rating: 0,
+        totalDeliveries: 0,
+        createdAt: iso,
+      });
+    });
+
+    pushNotification({
+      userId: 'u-admin',
+      audience: 'admin',
+      title: 'Nova solicitação de entregador',
+      body: `${profile.fullName} (${input.vehicle === 'moto' ? 'Moto' : 'Bicicleta'}) enviou o cadastro.`,
+    });
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: profile.id }));
+    return { profile, application };
+  }
+
+  async getDriverApplication(userId: string): Promise<DriverApplication | null> {
+    const apps = getState().driverApplications.filter((a) => a.userId === userId);
+    // a mais recente
+    return apps.sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
+  }
+
+  async getDriverApplications(): Promise<DriverApplication[]> {
+    return [...getState().driverApplications].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    );
+  }
+
+  async reviewDriverApplication(
+    id: string,
+    decision: ReviewDecision,
+    adminId: string,
+  ): Promise<DriverApplication> {
+    await wait(200);
+    if (decision.action !== 'approve' && !decision.reason?.trim()) {
+      throw new Error('Informe o motivo da decisão.');
+    }
+    const nextStatus: DriverApplicationStatus =
+      decision.action === 'approve'
+        ? 'approved'
+        : decision.action === 'reject'
+          ? 'rejected'
+          : 'needs_resubmission';
+    let updated: DriverApplication | undefined;
+    mutate((s) => {
+      const app = s.driverApplications.find((a) => a.id === id);
+      if (!app) throw new Error('Solicitação não encontrada.');
+      const now = new Date().toISOString();
+      app.status = nextStatus;
+      app.updatedAt = now;
+      app.reviews.push({
+        at: now,
+        by: adminId,
+        action:
+          decision.action === 'approve'
+            ? 'approved'
+            : decision.action === 'reject'
+              ? 'rejected'
+              : 'resubmission_requested',
+        status: nextStatus,
+        reason: decision.reason?.trim(),
+      });
+      const driver = s.drivers.find((d) => d.id === app.userId);
+      if (driver) {
+        driver.status =
+          nextStatus === 'approved' ? 'approved' : nextStatus === 'rejected' ? 'rejected' : 'pending';
+      }
+      updated = app;
+    });
+
+    const messages: Record<DriverApplicationStatus, string> = {
+      approved: 'Cadastro aprovado! Você já pode receber entregas. 🟢',
+      rejected: `Cadastro reprovado. ${decision.reason ?? ''}`.trim(),
+      needs_resubmission: `Precisamos de um novo envio. ${decision.reason ?? ''}`.trim(),
+      pending_documents: 'Faltam documentos no seu cadastro.',
+      under_analysis: 'Seu cadastro está em análise.',
+      manual_review: 'Seu cadastro está em análise.',
+    };
+    pushNotification({
+      userId: updated!.userId,
+      audience: 'driver',
+      title: 'Status do cadastro atualizado',
+      body: messages[nextStatus],
+    });
+    return updated!;
+  }
+
+  async getDocumentUrl(path: string): Promise<string | null> {
+    // No mock, o "caminho" já é a própria dataUrl da imagem.
+    return path || null;
   }
 
   /* ---- Notificações ---- */

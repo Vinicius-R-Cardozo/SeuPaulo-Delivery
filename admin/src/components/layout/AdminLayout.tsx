@@ -5,6 +5,7 @@ import {
   ClipboardList,
   UtensilsCrossed,
   Bike,
+  UserPlus,
   Users,
   LogOut,
   Menu as MenuIcon,
@@ -21,6 +22,7 @@ const NAV = [
   { to: '/pedidos', label: 'Pedidos', icon: ClipboardList, end: false },
   { to: '/cardapio', label: 'Cardápio', icon: UtensilsCrossed, end: false },
   { to: '/entregadores', label: 'Entregadores', icon: Bike, end: false },
+  { to: '/solicitacoes', label: 'Solicitações', icon: UserPlus, end: false },
   { to: '/clientes', label: 'Clientes', icon: Users, end: false },
 ];
 

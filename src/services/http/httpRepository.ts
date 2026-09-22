@@ -4,6 +4,7 @@ import type {
   Category,
   Coupon,
   Driver,
+  DriverApplication,
   DriverStatus,
   LatLng,
   Order,
@@ -16,6 +17,9 @@ import type {
   AuthSession,
   CreateOrderInput,
   DataRepository,
+  DriverApplicationInput,
+  DriverRegistration,
+  ReviewDecision,
   SignUpInput,
   Unsubscribe,
 } from '@/services/types';
@@ -285,6 +289,62 @@ export class HttpRepository implements DataRepository {
   }
   setDriverLocation(id: string, location: LatLng): Promise<Driver> {
     return this.request<Driver>(`/drivers/${id}/location`, { method: 'POST', body: location });
+  }
+
+  /* ---- Cadastro/onboarding de entregador ---- */
+  async registerDriver(input: DriverApplicationInput): Promise<DriverRegistration> {
+    // multipart: os arquivos vão como binário; o restante como JSON.
+    const fd = new FormData();
+    const { documents, ...rest } = input;
+    fd.append('payload', JSON.stringify(rest));
+    for (const doc of documents) {
+      fd.append('files', doc.blob, `${doc.kind}.jpg`);
+      fd.append('kinds', doc.kind);
+    }
+    const res = await fetch(`${this.base}/drivers/apply`, { method: 'POST', body: fd });
+    if (!res.ok) {
+      let message = 'Não foi possível enviar o cadastro.';
+      try {
+        const data = await res.json();
+        if (typeof data?.detail === 'string') message = data.detail;
+      } catch {
+        /* keep default */
+      }
+      throw new Error(message);
+    }
+    const data = (await res.json()) as { token: string; profile: Profile; application: DriverApplication };
+    setToken(data.token);
+    return { profile: data.profile, application: data.application };
+  }
+  async getDriverApplication(userId: string): Promise<DriverApplication | null> {
+    try {
+      return await this.request<DriverApplication>(`/drivers/${userId}/application`);
+    } catch {
+      return null;
+    }
+  }
+  getDriverApplications(): Promise<DriverApplication[]> {
+    return this.request<DriverApplication[]>('/drivers/applications');
+  }
+  reviewDriverApplication(
+    id: string,
+    decision: ReviewDecision,
+    _adminId: string,
+  ): Promise<DriverApplication> {
+    return this.request<DriverApplication>(`/drivers/applications/${id}/review`, {
+      method: 'POST',
+      body: decision,
+    });
+  }
+  async getDocumentUrl(path: string): Promise<string | null> {
+    try {
+      const r = await this.request<{ url: string }>(
+        `/drivers/documents?path=${encodeURIComponent(path)}`,
+      );
+      return r.url ?? null;
+    } catch {
+      return null;
+    }
   }
 
   /* ---- Notificações ---- */

@@ -3,6 +3,7 @@ import type {
   AppNotification,
   Coupon,
   Driver,
+  DriverApplication,
   Order,
   Profile,
 } from '@/types';
@@ -25,11 +26,12 @@ export interface MockState {
   coupons: Coupon[];
   orders: Order[];
   drivers: Driver[];
+  driverApplications: DriverApplication[];
   notifications: AppNotification[];
 }
 
 const STORAGE_KEY = 'spd_mock_v1';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString();
 
@@ -213,6 +215,59 @@ function seed(): MockState {
     updatedAt: daysAgo(7),
   };
 
+  // Candidatura de exemplo (aguardando revisão manual) para popular o painel.
+  const pendingApplication: DriverApplication = {
+    id: 'app-carlos',
+    userId: driverPending.id,
+    vehicle: 'moto',
+    status: 'manual_review',
+    fullName: driverPending.fullName,
+    cpf: '39053344705',
+    rg: 'MG-12.345.678',
+    birthDate: '15/04/1996',
+    email: driverPending.email,
+    phone: driverPending.phone,
+    address: {
+      zip: '32604-148',
+      street: 'Rua Milton Vieira Pinto',
+      number: '16',
+      neighborhood: 'Angola',
+      city: 'Betim',
+      state: 'MG',
+    },
+    cnh: { number: '04812345678', category: 'AB', expiresAt: '10/12/2030' },
+    moto: { brand: 'Yamaha', model: 'Factor 150', year: '2021', color: 'Preta', plate: 'QXR4C56' },
+    bike: null,
+    documents: [],
+    autoAnalysis: {
+      recommendation: 'manual_review',
+      confidence: null,
+      provider: 'triagem-interna',
+      analyzedAt: daysAgo(2),
+      checks: [
+        { id: 'id:selfie:quality', label: 'Qualidade da selfie', status: 'pass' },
+        {
+          id: 'id:facematch',
+          label: 'Selfie corresponde ao documento',
+          status: 'skipped',
+          detail: 'Comparação facial não configurada — verificar na revisão manual.',
+        },
+        {
+          id: 'doc:cnh_front:ocr',
+          label: 'Leitura automática (OCR) dos campos',
+          status: 'skipped',
+          detail: 'OCR não configurado — conferência manual.',
+        },
+      ],
+    },
+    reviews: [
+      { at: daysAgo(2), by: driverPending.id, action: 'submitted', status: 'under_analysis' },
+      { at: daysAgo(2), by: 'auto', action: 'auto_analysis', status: 'manual_review' },
+    ],
+    createdAt: daysAgo(2),
+    updatedAt: daysAgo(2),
+  };
+
   return {
     version: SCHEMA_VERSION,
     profiles: [admin, customer, driverProfile, driverPending],
@@ -227,6 +282,7 @@ function seed(): MockState {
     coupons,
     orders: [pastOrder],
     drivers,
+    driverApplications: [pendingApplication],
     notifications: [],
   };
 }

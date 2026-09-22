@@ -192,6 +192,8 @@ export interface Order {
 
 export type DriverStatus = 'pending' | 'approved' | 'rejected' | 'blocked';
 
+// 'carro' foi descontinuado no cadastro; mantido no union apenas para não
+// quebrar dados antigos. Novos cadastros usam DeliveryVehicle (bike/moto).
 export type VehicleType = 'moto' | 'carro' | 'bicicleta';
 
 export interface Driver {
@@ -206,6 +208,123 @@ export interface Driver {
   rating: number;
   totalDeliveries: number;
   createdAt: string;
+}
+
+/* ------------------ Cadastro de entregador (onboarding) ------------------ */
+
+export type DeliveryVehicle = 'bicicleta' | 'moto';
+
+export type BikeKind = 'convencional' | 'eletrica';
+
+export type DriverApplicationStatus =
+  | 'pending_documents'
+  | 'under_analysis'
+  | 'manual_review'
+  | 'approved'
+  | 'rejected'
+  | 'needs_resubmission';
+
+export type DocumentKind =
+  | 'selfie'
+  | 'id_document'
+  | 'cnh_front'
+  | 'cnh_back'
+  | 'vehicle_doc'
+  | 'vehicle_photo'
+  | 'plate_photo'
+  | 'bike_photo';
+
+export interface ApplicationDocument {
+  kind: DocumentKind;
+  path: string;
+  uploadedAt: string;
+  ocr?: Record<string, string> | null;
+}
+
+export type CheckStatus = 'pass' | 'warn' | 'fail' | 'skipped';
+
+export interface VerificationCheck {
+  id: string;
+  label: string;
+  status: CheckStatus;
+  detail?: string;
+}
+
+export interface AutoAnalysisResult {
+  recommendation: 'auto_approve' | 'manual_review' | 'reject';
+  confidence: number | null;
+  checks: VerificationCheck[];
+  provider: string;
+  analyzedAt: string;
+}
+
+export type ReviewAction =
+  | 'submitted'
+  | 'auto_analysis'
+  | 'approved'
+  | 'rejected'
+  | 'resubmission_requested';
+
+export interface ReviewEvent {
+  at: string;
+  by: string;
+  action: ReviewAction;
+  status: DriverApplicationStatus;
+  reason?: string;
+}
+
+export interface ApplicationAddress {
+  zip: string;
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+}
+
+export interface CnhInfo {
+  number: string;
+  category: string;
+  expiresAt: string;
+}
+
+export interface MotoInfo {
+  brand: string;
+  model: string;
+  year: string;
+  color: string;
+  plate: string;
+  renavam?: string;
+}
+
+export interface BikeInfo {
+  kind: BikeKind;
+  brand?: string;
+  model?: string;
+  color: string;
+}
+
+export interface DriverApplication {
+  id: string;
+  userId: string;
+  vehicle: DeliveryVehicle;
+  status: DriverApplicationStatus;
+  fullName: string;
+  cpf: string;
+  rg: string;
+  birthDate: string;
+  email: string;
+  phone: string;
+  address: ApplicationAddress;
+  cnh?: CnhInfo | null;
+  moto?: MotoInfo | null;
+  bike?: BikeInfo | null;
+  documents: ApplicationDocument[];
+  autoAnalysis: AutoAnalysisResult | null;
+  reviews: ReviewEvent[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 /* ---------------------------- Notificações ---------------------------- */

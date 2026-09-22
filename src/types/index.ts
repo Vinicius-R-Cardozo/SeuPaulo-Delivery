@@ -192,6 +192,8 @@ export interface Order {
 
 export type DriverStatus = 'pending' | 'approved' | 'rejected' | 'blocked';
 
+// 'carro' foi descontinuado no cadastro; mantido no union apenas para não
+// quebrar dados antigos. Novos cadastros usam DeliveryVehicle (bike/moto).
 export type VehicleType = 'moto' | 'carro' | 'bicicleta';
 
 export interface Driver {
@@ -206,6 +208,145 @@ export interface Driver {
   rating: number;
   totalDeliveries: number;
   createdAt: string;
+}
+
+/* ------------------ Cadastro de entregador (onboarding) ------------------ */
+
+/** Tipo de entrega escolhido no cadastro. Carro foi removido do fluxo. */
+export type DeliveryVehicle = 'bicicleta' | 'moto';
+
+export type BikeKind = 'convencional' | 'eletrica';
+
+/**
+ * Estado geral do cadastro de entregador — acompanhado tanto pelo entregador
+ * (no app) quanto pelo administrador (no painel).
+ */
+export type DriverApplicationStatus =
+  | 'pending_documents' // faltam documentos/informações
+  | 'under_analysis' // análise automática em andamento
+  | 'manual_review' // aguardando revisão humana
+  | 'approved' // aprovado
+  | 'rejected' // reprovado
+  | 'needs_resubmission'; // precisa reenviar documento/selfie
+
+/** Tipos de arquivo que um candidato pode enviar. */
+export type DocumentKind =
+  | 'selfie'
+  | 'id_document' // RG/identidade
+  | 'cnh_front'
+  | 'cnh_back'
+  | 'vehicle_doc' // CRLV
+  | 'vehicle_photo'
+  | 'plate_photo'
+  | 'bike_photo';
+
+/**
+ * Arquivo enviado. Guardamos o caminho no bucket PRIVADO (nunca URL pública)
+ * e, quando houver, os dados extraídos por OCR.
+ */
+export interface ApplicationDocument {
+  kind: DocumentKind;
+  path: string;
+  uploadedAt: string;
+  ocr?: Record<string, string> | null;
+}
+
+/** Resultado de um item da triagem automática. */
+export type CheckStatus = 'pass' | 'warn' | 'fail' | 'skipped';
+
+export interface VerificationCheck {
+  id: string;
+  label: string;
+  status: CheckStatus;
+  detail?: string;
+}
+
+/**
+ * Resultado da análise automática. É uma camada de TRIAGEM: recomenda um
+ * caminho e aponta alertas, mas nunca afirma sozinha que um documento é
+ * verdadeiro. A decisão final é do administrador quando houver dúvida.
+ */
+export interface AutoAnalysisResult {
+  recommendation: 'auto_approve' | 'manual_review' | 'reject';
+  confidence: number | null; // 0–100, quando o provedor fornecer
+  checks: VerificationCheck[];
+  provider: string;
+  analyzedAt: string;
+}
+
+export type ReviewAction =
+  | 'submitted'
+  | 'auto_analysis'
+  | 'approved'
+  | 'rejected'
+  | 'resubmission_requested';
+
+/** Item do histórico de análise/decisão (auditoria). */
+export interface ReviewEvent {
+  at: string;
+  by: string; // id do admin, ou 'auto' para a análise automática
+  action: ReviewAction;
+  status: DriverApplicationStatus;
+  reason?: string;
+}
+
+export interface ApplicationAddress {
+  zip: string;
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+}
+
+export interface CnhInfo {
+  number: string;
+  category: string;
+  expiresAt: string;
+}
+
+export interface MotoInfo {
+  brand: string;
+  model: string;
+  year: string;
+  color: string;
+  plate: string;
+  renavam?: string;
+}
+
+export interface BikeInfo {
+  kind: BikeKind;
+  brand?: string;
+  model?: string;
+  color: string;
+}
+
+export interface DriverApplication {
+  id: string;
+  userId: string;
+  vehicle: DeliveryVehicle;
+  status: DriverApplicationStatus;
+
+  // Dados pessoais
+  fullName: string;
+  cpf: string;
+  rg: string;
+  birthDate: string;
+  email: string;
+  phone: string;
+
+  address: ApplicationAddress;
+
+  cnh?: CnhInfo | null;
+  moto?: MotoInfo | null;
+  bike?: BikeInfo | null;
+
+  documents: ApplicationDocument[];
+  autoAnalysis: AutoAnalysisResult | null;
+  reviews: ReviewEvent[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 /* ---------------------------- Notificações ---------------------------- */

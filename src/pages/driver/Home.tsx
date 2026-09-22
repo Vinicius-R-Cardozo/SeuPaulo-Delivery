@@ -8,13 +8,13 @@ import type { Order } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { FullScreenLoader } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { DriverStatusBadge } from '@/components/ui/StatusBadge';
 import { OrderStatusBadge } from '@/components/ui/StatusBadge';
 import { useToast } from '@/providers/ToastProvider';
 import { formatBRL, formatKm } from '@/utils/format';
 import { haversineKm } from '@/utils/geo';
 import { RESTAURANT } from '@/data/restaurant';
 import { cn } from '@/utils/cn';
+import { ApplicationStatus } from './ApplicationStatus';
 
 export function DriverHome() {
   const { profile } = useAuth();
@@ -69,13 +69,15 @@ export function DriverHome() {
 
   if (loading) return <FullScreenLoader />;
 
-  // Cadastro não aprovado → tela de status
+  // Cadastro não aprovado → tela de acompanhamento da candidatura
   if (!driver || driver.status !== 'approved') {
-    return (
-      <DriverStatusScreen
-        status={(driver?.status ?? 'pending') as 'pending' | 'rejected' | 'blocked'}
-      />
-    );
+    const fallback =
+      driver?.status === 'rejected'
+        ? 'rejected'
+        : driver?.status === 'blocked'
+          ? 'rejected'
+          : 'under_analysis';
+    return <ApplicationStatus fallbackStatus={fallback} />;
   }
 
   const todayEarnings = 0; // resumo rápido; detalhado em /ganhos
@@ -222,33 +224,3 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   );
 }
 
-function DriverStatusScreen({ status }: { status: 'pending' | 'rejected' | 'blocked' }) {
-  const info = {
-    pending: {
-      emoji: '🟡',
-      title: 'Cadastro em análise',
-      desc: 'Seu cadastro foi enviado e está sendo avaliado pela administração do Seu Paulo. Você será avisado assim que for aprovado.',
-    },
-    rejected: {
-      emoji: '🔴',
-      title: 'Cadastro reprovado',
-      desc: 'Infelizmente seu cadastro não foi aprovado. Entre em contato com a administração para mais informações.',
-    },
-    blocked: {
-      emoji: '🚫',
-      title: 'Acesso bloqueado',
-      desc: 'Seu acesso está temporariamente bloqueado. Fale com a administração.',
-    },
-  }[status];
-
-  return (
-    <div className="flex min-h-[70vh] items-center justify-center px-6">
-      <div className="card max-w-sm p-8 text-center">
-        <div className="text-5xl">{info.emoji}</div>
-        <h1 className="display mt-4 text-2xl text-cream">{info.title}</h1>
-        <p className="mt-3 text-sm leading-relaxed text-cream-3">{info.desc}</p>
-        <DriverStatusBadge status={status} />
-      </div>
-    </div>
-  );
-}

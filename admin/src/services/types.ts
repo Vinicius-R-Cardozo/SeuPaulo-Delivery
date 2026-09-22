@@ -14,10 +14,55 @@ import type {
   PaymentMethod,
   LatLng,
   DriverStatus,
+  DeliveryVehicle,
+  DriverApplication,
+  ApplicationAddress,
+  CnhInfo,
+  MotoInfo,
+  BikeInfo,
+  DocumentKind,
 } from '@/types';
 
 export interface AuthSession {
   profile: Profile;
+}
+
+/* ------------------ Cadastro de entregador (onboarding) ------------------ */
+
+export interface CapturedDocument {
+  kind: DocumentKind;
+  blob: Blob;
+  dataUrl: string;
+  mime: string;
+  sizeBytes: number;
+  width: number;
+  height: number;
+}
+
+export interface DriverApplicationInput {
+  password: string;
+  vehicle: DeliveryVehicle;
+  fullName: string;
+  cpf: string;
+  rg: string;
+  birthDate: string;
+  email: string;
+  phone: string;
+  address: ApplicationAddress;
+  cnh?: CnhInfo | null;
+  moto?: MotoInfo | null;
+  bike?: BikeInfo | null;
+  documents: CapturedDocument[];
+}
+
+export interface DriverRegistration {
+  profile: Profile;
+  application: DriverApplication;
+}
+
+export interface ReviewDecision {
+  action: 'approve' | 'reject' | 'request_resubmission';
+  reason?: string;
 }
 
 export interface SignUpInput {
@@ -109,6 +154,17 @@ export interface DataRepository {
   setDriverStatus(id: string, status: DriverStatus): Promise<Driver>;
   setDriverOnline(id: string, online: boolean): Promise<Driver>;
   setDriverLocation(id: string, location: LatLng): Promise<Driver>;
+
+  /* ---- Cadastro/onboarding de entregador ---- */
+  registerDriver(input: DriverApplicationInput): Promise<DriverRegistration>;
+  getDriverApplication(userId: string): Promise<DriverApplication | null>;
+  getDriverApplications(): Promise<DriverApplication[]>;
+  reviewDriverApplication(
+    id: string,
+    decision: ReviewDecision,
+    adminId: string,
+  ): Promise<DriverApplication>;
+  getDocumentUrl(path: string): Promise<string | null>;
 
   /* ---- Notificações ---- */
   getNotifications(userId: string): Promise<AppNotification[]>;

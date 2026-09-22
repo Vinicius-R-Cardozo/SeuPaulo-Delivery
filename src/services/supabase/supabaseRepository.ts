@@ -1,20 +1,31 @@
 import type {
   Address,
   AppNotification,
+  ApplicationAddress,
+  ApplicationDocument,
+  AutoAnalysisResult,
+  BikeInfo,
   Category,
+  CnhInfo,
   Coupon,
   Driver,
+  DriverApplication,
   DriverStatus,
   LatLng,
+  MotoInfo,
   Order,
   OrderStatus,
   Product,
   Profile,
+  ReviewEvent,
 } from '@/types';
 import type {
   AuthSession,
   CreateOrderInput,
   DataRepository,
+  DriverApplicationInput,
+  DriverRegistration,
+  ReviewDecision,
   SignUpInput,
   Unsubscribe,
 } from '@/services/types';
@@ -22,6 +33,10 @@ import { getSupabase } from './client';
 import { estimateEtaMinutes } from '@/utils/geo';
 import { orderCode } from '@/utils/id';
 import { RESTAURANT } from '@/data/restaurant';
+import { verificationProvider } from '@/services/verification';
+import { toCapturedFile } from '@/components/onboarding/capture';
+
+const DOCS_BUCKET = 'driver-docs';
 
 /*
  * Implementação real contra o Supabase (Postgres + Auth + Realtime).
@@ -143,6 +158,37 @@ function toOrder(r: Row): Order {
         : null,
     etaMinutes: r.eta_minutes != null ? Number(r.eta_minutes) : null,
     deliveredAt: (r.delivered_at as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function toApplication(r: Row): DriverApplication {
+  return {
+    id: r.id as string,
+    userId: r.user_id as string,
+    vehicle: r.vehicle as DriverApplication['vehicle'],
+    status: r.status as DriverApplication['status'],
+    fullName: r.full_name as string,
+    cpf: (r.cpf as string) ?? '',
+    rg: (r.rg as string) ?? '',
+    birthDate: (r.birth_date as string) ?? '',
+    email: (r.email as string) ?? '',
+    phone: (r.phone as string) ?? '',
+    address: (r.address as ApplicationAddress) ?? {
+      zip: '',
+      street: '',
+      number: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+    },
+    cnh: (r.cnh as CnhInfo) ?? null,
+    moto: (r.moto as MotoInfo) ?? null,
+    bike: (r.bike as BikeInfo) ?? null,
+    documents: (r.documents as ApplicationDocument[]) ?? [],
+    autoAnalysis: (r.auto_analysis as AutoAnalysisResult) ?? null,
+    reviews: (r.reviews as ReviewEvent[]) ?? [],
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
@@ -586,6 +632,151 @@ class SupabaseRepository implements DataRepository {
       .single();
     if (error) throw new Error(error.message);
     return toDriver(data);
+  }
+
+  /* ---- Cadastro/onboarding de entregador ---- */
+  async registerDriver(input: DriverApplicationInput): Promise<DriverRegistration> {
+    // 1. Cria a conta (Auth). O gatilho handle_new_user cria o profile.
+    const { data, error } = await this.sb.auth.signUp({
+      email: input.email,
+      password: input.password,
+      options: { data: { full_name: input.fullName, phone: input.phone, role: 'driver' } },
+    });
+    if (error) {
+      const m = error.message.toLowerCase();
+      if (m.includes('already registered') || m.includes('already been registered')) {
+        throw new Error('Já existe uma conta com este e-mail.');
+      }
+      if (m.includes('rate limit')) {
+        throw new Error('Muitas tentativas agora. Aguarde alguns minutos e tente de novo.');
+      }
+      throw new Error(error.message);
+    }
+    if (!data.session) {
+      throw new Error(
+        'Conta criada, mas falta confirmar o e-mail. Desative a confirmação de e-mail no Supabase ' +
+          '(Authentication → Providers → Email) para o cadastro entrar direto.',
+      );
+    }
+    const userId = data.user!.id;
+
+    // 2. Cria o entregador como pendente (só o admin aprova).
+    const { error: dErr } = await this.sb.from('drivers').insert({
+      id: userId,
+      vehicle_type: input.vehicle,
+      plate: (input.moto?.plate ?? '').toUpperCase() || 'N/A',
+      model:
+        input.vehicle === 'moto'
+          ? `${input.moto?.brand ?? ''} ${input.moto?.model ?? ''}`.trim()
+          : `Bicicleta ${input.bike?.kind === 'eletrica' ? 'elétrica' : 'convencional'}`,
+      color: (input.moto?.color ?? input.bike?.color ?? '').trim(),
+      status: 'pending',
+    });
+    if (dErr && !dErr.message.toLowerCase().includes('duplicate')) {
+      throw new Error(dErr.message);
+    }
+
+    // 3. Envia os documentos para o bucket PRIVADO (pasta = id do usuário).
+    const nowIso = new Date().toISOString();
+    const documents: ApplicationDocument[] = [];
+    for (const m of input.documents) {
+      const path = `${userId}/${m.kind}.jpg`;
+      const { error: upErr } = await this.sb.storage
+        .from(DOCS_BUCKET)
+        .upload(path, m.blob, { contentType: m.mime, upsert: true });
+      if (upErr) throw new Error(`Falha ao enviar o arquivo (${m.kind}): ${upErr.message}`);
+      documents.push({ kind: m.kind, path, uploadedAt: nowIso, ocr: null });
+    }
+
+    // 4. Triagem automática (metadados; nunca afirma autenticidade).
+    const analysis = await verificationProvider.analyze({
+      vehicle: input.vehicle,
+      files: input.documents.map(toCapturedFile),
+      claimed: {
+        cnh: input.cnh ? { ...input.cnh } : undefined,
+        moto: input.moto ? { ...input.moto } : undefined,
+      },
+    });
+    // Sem fornecedor real, a candidatura sempre vai para revisão manual.
+    const status = 'manual_review';
+    const reviews: ReviewEvent[] = [
+      { at: nowIso, by: userId, action: 'submitted', status: 'under_analysis' },
+      { at: nowIso, by: 'auto', action: 'auto_analysis', status },
+    ];
+
+    // 5. Abre a candidatura. RLS garante user_id = auth.uid() e impede status
+    //    aprovado/reprovado no insert (isso só via review_driver_application).
+    const { data: appRow, error: appErr } = await this.sb
+      .from('driver_applications')
+      .insert({
+        user_id: userId,
+        vehicle: input.vehicle,
+        status,
+        full_name: input.fullName,
+        cpf: input.cpf.replace(/\D/g, ''),
+        rg: input.rg,
+        birth_date: input.birthDate,
+        email: input.email,
+        phone: input.phone,
+        address: input.address,
+        cnh: input.cnh ?? null,
+        moto: input.moto ?? null,
+        bike: input.bike ?? null,
+        documents,
+        auto_analysis: analysis,
+        reviews,
+      })
+      .select('*')
+      .single();
+    if (appErr) {
+      if (appErr.code === '23505' || appErr.message.toLowerCase().includes('duplicate')) {
+        throw new Error('Já existe um cadastro de entregador com este CPF.');
+      }
+      throw new Error(appErr.message);
+    }
+
+    const profile = await this.profileFromUser(userId);
+    return { profile, application: toApplication(appRow) };
+  }
+
+  async getDriverApplication(userId: string): Promise<DriverApplication | null> {
+    const { data } = await this.sb
+      .from('driver_applications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data ? toApplication(data) : null;
+  }
+
+  async getDriverApplications(): Promise<DriverApplication[]> {
+    const { data, error } = await this.sb
+      .from('driver_applications')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data.map(toApplication);
+  }
+
+  async reviewDriverApplication(
+    id: string,
+    decision: ReviewDecision,
+    _adminId: string,
+  ): Promise<DriverApplication> {
+    const { data, error } = await this.sb.rpc('review_driver_application', {
+      p_id: id,
+      p_action: decision.action,
+      p_reason: decision.reason ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return toApplication(data as Row);
+  }
+
+  async getDocumentUrl(path: string): Promise<string | null> {
+    const { data, error } = await this.sb.storage.from(DOCS_BUCKET).createSignedUrl(path, 3600);
+    if (error) return null;
+    return data?.signedUrl ?? null;
   }
 
   /* ---- Notificações ---- */

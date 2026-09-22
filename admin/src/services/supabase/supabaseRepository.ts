@@ -1,20 +1,31 @@
 import type {
   Address,
   AppNotification,
+  ApplicationAddress,
+  ApplicationDocument,
+  AutoAnalysisResult,
+  BikeInfo,
   Category,
+  CnhInfo,
   Coupon,
   Driver,
+  DriverApplication,
   DriverStatus,
   LatLng,
+  MotoInfo,
   Order,
   OrderStatus,
   Product,
   Profile,
+  ReviewEvent,
 } from '@/types';
 import type {
   AuthSession,
   CreateOrderInput,
   DataRepository,
+  DriverApplicationInput,
+  DriverRegistration,
+  ReviewDecision,
   SignUpInput,
   Unsubscribe,
 } from '@/services/types';
@@ -22,6 +33,8 @@ import { getSupabase } from './client';
 import { estimateEtaMinutes } from '@/utils/geo';
 import { orderCode } from '@/utils/id';
 import { RESTAURANT } from '@/data/restaurant';
+
+const DOCS_BUCKET = 'driver-docs';
 
 /*
  * Implementação real contra o Supabase (Postgres + Auth + Realtime).
@@ -143,6 +156,37 @@ function toOrder(r: Row): Order {
         : null,
     etaMinutes: r.eta_minutes != null ? Number(r.eta_minutes) : null,
     deliveredAt: (r.delivered_at as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function toApplication(r: Row): DriverApplication {
+  return {
+    id: r.id as string,
+    userId: r.user_id as string,
+    vehicle: r.vehicle as DriverApplication['vehicle'],
+    status: r.status as DriverApplication['status'],
+    fullName: r.full_name as string,
+    cpf: (r.cpf as string) ?? '',
+    rg: (r.rg as string) ?? '',
+    birthDate: (r.birth_date as string) ?? '',
+    email: (r.email as string) ?? '',
+    phone: (r.phone as string) ?? '',
+    address: (r.address as ApplicationAddress) ?? {
+      zip: '',
+      street: '',
+      number: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+    },
+    cnh: (r.cnh as CnhInfo) ?? null,
+    moto: (r.moto as MotoInfo) ?? null,
+    bike: (r.bike as BikeInfo) ?? null,
+    documents: (r.documents as ApplicationDocument[]) ?? [],
+    autoAnalysis: (r.auto_analysis as AutoAnalysisResult) ?? null,
+    reviews: (r.reviews as ReviewEvent[]) ?? [],
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
@@ -578,6 +622,53 @@ class SupabaseRepository implements DataRepository {
       .single();
     if (error) throw new Error(error.message);
     return toDriver(data);
+  }
+
+  /* ---- Cadastro/onboarding de entregador ---- */
+  // O onboarding de entregador acontece no APP, não no painel. Aqui o admin
+  // apenas lê e revisa as candidaturas.
+  async registerDriver(_input: DriverApplicationInput): Promise<DriverRegistration> {
+    throw new Error('O cadastro de entregador é feito pelo aplicativo.');
+  }
+
+  async getDriverApplication(userId: string): Promise<DriverApplication | null> {
+    const { data } = await this.sb
+      .from('driver_applications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data ? toApplication(data) : null;
+  }
+
+  async getDriverApplications(): Promise<DriverApplication[]> {
+    const { data, error } = await this.sb
+      .from('driver_applications')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data.map(toApplication);
+  }
+
+  async reviewDriverApplication(
+    id: string,
+    decision: ReviewDecision,
+    _adminId: string,
+  ): Promise<DriverApplication> {
+    const { data, error } = await this.sb.rpc('review_driver_application', {
+      p_id: id,
+      p_action: decision.action,
+      p_reason: decision.reason ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return toApplication(data as Row);
+  }
+
+  async getDocumentUrl(path: string): Promise<string | null> {
+    const { data, error } = await this.sb.storage.from(DOCS_BUCKET).createSignedUrl(path, 3600);
+    if (error) return null;
+    return data?.signedUrl ?? null;
   }
 
   /* ---- Notificações ---- */
