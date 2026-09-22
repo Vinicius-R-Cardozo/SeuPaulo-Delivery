@@ -31,7 +31,7 @@ export interface PasswordStrength {
 
 export function passwordStrength(pw: string): PasswordStrength {
   const checks = {
-    length: pw.length >= 8,
+    length: pw.length >= 6,
     upper: /[A-Z]/.test(pw),
     number: /\d/.test(pw),
     special: /[^A-Za-z0-9]/.test(pw),
@@ -43,11 +43,9 @@ export function passwordStrength(pw: string): PasswordStrength {
 
 export function validatePassword(pw: string): string | null {
   if (!pw) return 'Crie uma senha.';
-  if (pw.length < 8) return 'A senha precisa de ao menos 8 caracteres.';
-  const { checks } = passwordStrength(pw);
-  if (!checks.upper || !checks.number) {
-    return 'Use ao menos uma letra maiúscula e um número.';
-  }
+  // Regra simples e acessível: mínimo de 6 caracteres (igual ao Supabase).
+  // Maiúscula/número/símbolo são apenas SUGESTÕES para deixar mais forte.
+  if (pw.length < 6) return 'A senha precisa de ao menos 6 caracteres.';
   return null;
 }
 

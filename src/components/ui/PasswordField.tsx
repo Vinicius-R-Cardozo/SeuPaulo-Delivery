@@ -60,23 +60,13 @@ export function PasswordField({
               />
             ))}
           </div>
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-cream-3">
-            <Req ok={strength.checks.length} label="8+ caracteres" />
-            <Req ok={strength.checks.upper} label="Maiúscula" />
-            <Req ok={strength.checks.number} label="Número" />
-            <Req ok={strength.checks.special} label="Símbolo" />
-          </div>
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-cream-3">
+            <Check size={12} className={strength.checks.length ? 'text-success' : 'opacity-30'} />
+            Mínimo de 6 caracteres.
+            <span className="text-cream-3/70">Misturar números e símbolos deixa mais segura.</span>
+          </p>
         </div>
       )}
     </div>
-  );
-}
-
-function Req({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <span className={cn('inline-flex items-center gap-1', ok && 'text-success')}>
-      <Check size={12} className={ok ? 'opacity-100' : 'opacity-30'} />
-      {label}
-    </span>
   );
 }

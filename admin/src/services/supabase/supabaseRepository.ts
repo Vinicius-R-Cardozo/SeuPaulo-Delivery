@@ -200,7 +200,21 @@ class SupabaseRepository implements DataRepository {
         data: { full_name: input.fullName, phone: input.phone, role: input.role },
       },
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      const m = error.message.toLowerCase();
+      if (m.includes('rate limit')) {
+        throw new Error('Muitas tentativas agora. Aguarde alguns minutos e tente de novo.');
+      }
+      if (m.includes('already registered') || m.includes('already been registered')) {
+        throw new Error('Já existe uma conta com este e-mail.');
+      }
+      throw new Error(error.message);
+    }
+    if (!data.session) {
+      throw new Error(
+        'Conta criada, mas falta confirmar o e-mail. Desative a confirmação de e-mail no Supabase.',
+      );
+    }
     const userId = data.user!.id;
     // O gatilho handle_new_user cria a linha em profiles a partir do metadata.
     if (input.role === 'driver' && input.driver) {
