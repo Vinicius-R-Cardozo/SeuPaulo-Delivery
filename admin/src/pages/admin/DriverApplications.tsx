@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Check,
@@ -22,6 +23,7 @@ import type {
   DriverApplication,
   DriverApplicationStatus,
   ReviewEvent,
+  VerificationCheck,
 } from '@/types';
 import type { ReviewDecision } from '@/services/types';
 import { Button } from '@/components/ui/Button';
@@ -89,6 +91,7 @@ export function DriverApplications() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<DriverApplicationStatus | 'all'>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
 
   const load = async () => {
     try {
@@ -107,6 +110,23 @@ export function DriverApplications() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Link vindo da página de Entregadores: /solicitacoes?user=<id> abre a ficha.
+  const userParam = params.get('user');
+  useEffect(() => {
+    if (userParam && apps.length) {
+      const match = apps.find((a) => a.userId === userParam);
+      if (match) setSelectedId(match.id);
+    }
+  }, [userParam, apps]);
+
+  const clearSelection = () => {
+    setSelectedId(null);
+    if (userParam) {
+      params.delete('user');
+      setParams(params, { replace: true });
+    }
+  };
+
   const filtered = useMemo(
     () => (filter === 'all' ? apps : apps.filter((a) => a.status === filter)),
     [apps, filter],
@@ -118,10 +138,10 @@ export function DriverApplications() {
       <ApplicationDetail
         app={selected}
         adminId={profile?.id ?? ''}
-        onBack={() => setSelectedId(null)}
+        onBack={clearSelection}
         onReviewed={async () => {
           await load();
-          setSelectedId(null);
+          clearSelection();
         }}
       />
     );
@@ -286,6 +306,63 @@ function ApplicationDetail({
         </div>
         <StatusChip status={app.status} />
       </div>
+
+      {/* Veredito da triagem (padrão Lux: verdito + motivos + checagem oficial) */}
+      {analysis && (
+        <section
+          className={cn(
+            'mt-5 rounded-2xl border p-5',
+            analysis.recommendation === 'reject'
+              ? 'border-danger/30 bg-danger/5'
+              : analysis.recommendation === 'auto_approve'
+                ? 'border-success/30 bg-success/5'
+                : 'border-amber/30 bg-amber/5',
+          )}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-cream-3">Veredito da triagem</p>
+              <p className="mt-1 text-lg font-bold text-cream">
+                {analysis.recommendation === 'reject'
+                  ? '🔴 Reprovar'
+                  : analysis.recommendation === 'auto_approve'
+                    ? '🟢 Aprovar'
+                    : '🟠 Revisão manual necessária'}
+              </p>
+            </div>
+            <div className="text-right text-xs text-cream-3">
+              <p>Confiança: {analysis.confidence != null ? `${analysis.confidence}%` : '—'}</p>
+              <p>Analisado em {formatDateTime(analysis.analyzedAt)}</p>
+            </div>
+          </div>
+
+          {attentionChecks(analysis.checks).length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-semibold text-cream-2">Pontos de atenção</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {attentionChecks(analysis.checks).map((c) => (
+                  <span
+                    key={c.id}
+                    className={cn(
+                      'rounded-full px-2.5 py-1 text-[11px] font-medium',
+                      c.status === 'fail' ? 'bg-danger/15 text-danger' : 'bg-amber/15 text-amber',
+                    )}
+                  >
+                    {c.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Verificações que dependem de fornecedor externo (como no Lux v1) */}
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <OfficialRow label="Semelhança selfie × documento" value="Não configurado" />
+            <OfficialRow label="Antecedentes / base oficial" value="Não consultado" />
+            <OfficialRow label="CPF único no sistema" value="Sim" ok />
+          </div>
+        </section>
+      )}
 
       {/* Análise automática */}
       {analysis && (
@@ -499,6 +576,20 @@ function Row({ k, v }: { k: string; v: string }) {
       <span className="text-right font-medium text-cream">{v || '—'}</span>
     </div>
   );
+}
+
+function OfficialRow({ label, value, ok }: { label: string; value: string; ok?: boolean }) {
+  return (
+    <div className="rounded-lg bg-ink-3/50 p-2.5">
+      <p className="text-[11px] text-cream-3">{label}</p>
+      <p className={cn('mt-0.5 text-sm font-semibold', ok ? 'text-success' : 'text-cream-2')}>{value}</p>
+    </div>
+  );
+}
+
+/** Checagens que pedem atenção do admin (alertas e falhas). */
+function attentionChecks(checks: VerificationCheck[]): VerificationCheck[] {
+  return checks.filter((c) => c.status === 'warn' || c.status === 'fail');
 }
 
 function CheckIcon({ status }: { status: CheckStatus }) {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, X, Ban, Star, Package, RotateCcw } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Check, X, Ban, Star, Package, RotateCcw, FileText } from 'lucide-react';
 import { repository } from '@/services';
 import { useToast } from '@/providers/ToastProvider';
 import type { Driver, DriverStatus, Profile } from '@/types';
@@ -153,6 +154,13 @@ export function AdminDrivers() {
                     </Button>
                   )}
                 </div>
+
+                <Link
+                  to={`/solicitacoes?user=${d.id}`}
+                  className="mt-2 flex items-center justify-center gap-1.5 text-xs font-medium text-brand-2 hover:underline"
+                >
+                  <FileText size={13} /> Ver cadastro completo
+                </Link>
               </div>
             );
           })}
