@@ -1,5 +1,5 @@
 import { Link, Navigate } from 'react-router-dom';
-import { ShoppingBag, Bike, ShieldCheck, ArrowRight, MapPin, Clock, Star } from 'lucide-react';
+import { ShoppingBag, Bike, ArrowRight, MapPin, Clock, Star } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -78,11 +78,11 @@ export function Landing() {
 
       {/* Ambientes */}
       <div className="mx-auto max-w-5xl px-5 py-16 sm:px-8">
-        <p className="eyebrow text-center text-cream-3">Acessos do sistema</p>
+        <p className="eyebrow text-center text-cream-3">Bem-vindo</p>
         <h2 className="display mt-3 text-center text-3xl text-cream sm:text-4xl">
-          Três apps, um boteco
+          O boteco na palma da mão
         </h2>
-        <div className="mt-10 grid gap-5 md:grid-cols-3">
+        <div className="mx-auto mt-10 grid max-w-2xl gap-5 sm:grid-cols-2">
           <EnvCard
             to="/login"
             icon={<ShoppingBag size={22} />}
@@ -97,13 +97,6 @@ export function Landing() {
             desc="Receba entregas, navegue até o cliente e acompanhe seus ganhos."
             cta="Área do entregador"
             accent="amber"
-          />
-          <EnvCard
-            to="/admin/login"
-            icon={<ShieldCheck size={22} />}
-            title="Administrador"
-            desc="Gerencie pedidos, cardápio, entregadores e o faturamento da casa."
-            cta="Painel administrativo"
           />
         </div>
       </div>

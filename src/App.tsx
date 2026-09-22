@@ -27,13 +27,8 @@ import { DriverHistory } from '@/pages/driver/History';
 import { DriverEarnings } from '@/pages/driver/Earnings';
 import { DriverProfile } from '@/pages/driver/DriverProfile';
 
-import { AdminLogin } from '@/pages/admin/auth/AdminLogin';
-import { AdminLayout } from '@/components/layout/AdminLayout';
-import { Dashboard } from '@/pages/admin/Dashboard';
-import { AdminOrders } from '@/pages/admin/Orders';
-import { MenuManager } from '@/pages/admin/MenuManager';
-import { AdminDrivers } from '@/pages/admin/Drivers';
-import { AdminCustomers } from '@/pages/admin/Customers';
+// O painel administrativo NÃO faz parte deste app — ele é um site próprio
+// (pasta admin/, publicado no Vercel). Cliente e entregador não o acessam.
 
 export function App() {
   return (
@@ -81,23 +76,6 @@ export function App() {
         <Route path="historico" element={<DriverHistory />} />
         <Route path="ganhos" element={<DriverEarnings />} />
         <Route path="perfil" element={<DriverProfile />} />
-      </Route>
-
-      {/* ---------- Administrador ---------- */}
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute role="admin">
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Dashboard />} />
-        <Route path="pedidos" element={<AdminOrders />} />
-        <Route path="cardapio" element={<MenuManager />} />
-        <Route path="entregadores" element={<AdminDrivers />} />
-        <Route path="clientes" element={<AdminCustomers />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

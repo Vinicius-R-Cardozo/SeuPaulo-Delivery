@@ -84,10 +84,6 @@ export function CustomerLogin() {
         <Link to="/entregador/login" className="hover:text-cream">
           Sou entregador
         </Link>
-        <span aria-hidden>•</span>
-        <Link to="/admin/login" className="hover:text-cream">
-          Painel administrativo
-        </Link>
       </div>
     </AuthShell>
   );
