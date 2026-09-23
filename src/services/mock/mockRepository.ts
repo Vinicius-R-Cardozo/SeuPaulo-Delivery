@@ -28,7 +28,8 @@ import type {
 import { CATEGORIES_SEED, getState, mutate, subscribe } from './db';
 import { RESTAURANT } from '@/data/restaurant';
 import { uid, orderCode } from '@/utils/id';
-import { buildRoute, estimateEtaMinutes, pointAlongRoute } from '@/utils/geo';
+import { estimateEtaMinutes, pointAlongRoute } from '@/utils/geo';
+import { getDeliveryRoute } from '@/services/routing';
 import { verificationProvider } from '@/services/verification';
 import { toCapturedFile } from '@/components/onboarding/capture';
 
@@ -72,14 +73,20 @@ function stopRouteSim(orderId: string): void {
  * `driverLocation` e `etaMinutes` do pedido — é o que a tela de acompanhamento
  * do cliente e o mapa do entregador leem em tempo real.
  */
-function startRouteSim(orderId: string): void {
+async function startRouteSim(orderId: string): Promise<void> {
   stopRouteSim(orderId);
-  const s = getState();
-  const order = s.orders.find((o) => o.id === orderId);
+  const order = getState().orders.find((o) => o.id === orderId);
   if (!order || !order.address) return;
 
-  const route = buildRoute(RESTAURANT.location, { lat: order.address.lat, lng: order.address.lng });
-  const totalEta = estimateEtaMinutes({ lat: order.address.lat, lng: order.address.lng }, false);
+  const dest = { lat: order.address.lat, lng: order.address.lng };
+  // Rota REAL por ruas, sempre partindo do Seu Paulo.
+  const routeResult = await getDeliveryRoute(dest, RESTAURANT.location);
+  // Pode ter mudado de status enquanto buscava a rota.
+  const still = getState().orders.find((o) => o.id === orderId);
+  if (!still || still.status !== 'on_the_way') return;
+
+  const route = routeResult.coordinates;
+  const totalEta = routeResult.durationMin;
   const startedAt = Date.now();
   // A entrega simulada dura ~90s para caber numa demonstração.
   const durationMs = 90_000;
@@ -107,7 +114,7 @@ function startRouteSim(orderId: string): void {
 function retomarSimulacoes(): void {
   // Ao recarregar a página, retoma pedidos que estavam a caminho.
   getState().orders.forEach((o) => {
-    if (o.status === 'on_the_way' && o.address) startRouteSim(o.id);
+    if (o.status === 'on_the_way' && o.address) void startRouteSim(o.id);
   });
 }
 
@@ -501,7 +508,7 @@ class MockRepository implements DataRepository {
         orderId: updated.id,
       });
     }
-    if (status === 'on_the_way') startRouteSim(id);
+    if (status === 'on_the_way') void startRouteSim(id);
     if (status === 'cancelled') stopRouteSim(id);
     return updated!;
   }

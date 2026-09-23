@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import type { LatLng } from '@/types';
-import { buildRoute } from '@/utils/geo';
+import { getDeliveryRoute } from '@/services/routing';
 import { restaurantIcon, customerIcon, driverIcon } from './mapIcons';
 
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -83,33 +83,42 @@ export function DeliveryMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Marcador do cliente + rota.
+  // Marcador do cliente + rota real (por ruas) do Seu Paulo até o cliente.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-    if (customer) {
-      if (!markers.current.customer) {
-        markers.current.customer = L.marker([customer.lat, customer.lng], {
-          icon: customerIcon(),
+    if (!map || !customer) return;
+
+    if (!markers.current.customer) {
+      markers.current.customer = L.marker([customer.lat, customer.lng], {
+        icon: customerIcon(),
+      }).addTo(map);
+    } else {
+      markers.current.customer.setLatLng([customer.lat, customer.lng]);
+    }
+
+    if (!showRoute) return;
+    let active = true;
+    const drawRoute = (pts: [number, number][]) => {
+      if (!active || !mapRef.current) return;
+      if (!routeLine.current) {
+        routeLine.current = L.polyline(pts, {
+          color: '#d9a441',
+          weight: 5,
+          opacity: 0.9,
+          lineJoin: 'round',
+          lineCap: 'round',
         }).addTo(map);
       } else {
-        markers.current.customer.setLatLng([customer.lat, customer.lng]);
+        routeLine.current.setLatLngs(pts);
       }
-      if (showRoute) {
-        const pts = buildRoute(restaurant, customer).map((p) => [p.lat, p.lng] as [number, number]);
-        if (!routeLine.current) {
-          routeLine.current = L.polyline(pts, {
-            color: '#d9a441',
-            weight: 4,
-            opacity: 0.85,
-            dashArray: '2 8',
-            lineCap: 'round',
-          }).addTo(map);
-        } else {
-          routeLine.current.setLatLngs(pts);
-        }
-      }
-    }
+    };
+    // Rota real seguindo as ruas (com fallback interno se a API falhar).
+    void getDeliveryRoute(customer, restaurant).then((r) =>
+      drawRoute(r.coordinates.map((p) => [p.lat, p.lng] as [number, number])),
+    );
+    return () => {
+      active = false;
+    };
   }, [customer, restaurant, showRoute]);
 
   // Marcador móvel do entregador.
