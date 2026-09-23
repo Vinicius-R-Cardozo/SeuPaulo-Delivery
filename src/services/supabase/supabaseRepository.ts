@@ -231,6 +231,11 @@ class SupabaseRepository implements DataRepository {
   async signIn(email: string, password: string, role?: Profile['role']): Promise<AuthSession> {
     const { data, error } = await this.sb.auth.signInWithPassword({ email, password });
     if (error) throw new Error('E-mail ou senha incorretos.');
+    // Cliente com e-mail ainda não verificado não entra como conta ativa.
+    if (!data.user.email_confirmed_at) {
+      await this.sb.auth.signOut();
+      throw new Error('Confirme seu e-mail para entrar. Refaça o cadastro para receber um novo código.');
+    }
     const profile = await this.profileFromUser(data.user.id);
     if (role && profile.role !== role) {
       await this.sb.auth.signOut();
@@ -334,6 +339,49 @@ class SupabaseRepository implements DataRepository {
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     return data.map(toProfile);
+  }
+
+  /* ---- Verificação de e-mail no cadastro do cliente ---- */
+  // A geração/validação do código roda na Edge Function `signup-code`
+  // (service role + Resend). O código é guardado como HASH e nunca chega ao
+  // frontend. Erros de negócio voltam como { error } (HTTP 200).
+  private async callSignupFn<T>(body: Record<string, unknown>): Promise<T> {
+    const { data, error } = await this.sb.functions.invoke('signup-code', { body });
+    if (error) {
+      // tenta extrair a mensagem do corpo da resposta de erro
+      let msg = 'Não foi possível concluir. Tente novamente.';
+      try {
+        const ctx = (error as { context?: Response }).context;
+        if (ctx && typeof ctx.json === 'function') {
+          const j = (await ctx.json()) as { error?: string };
+          if (j?.error) msg = j.error;
+        }
+      } catch {
+        /* mantém a mensagem padrão */
+      }
+      throw new Error(msg);
+    }
+    const res = data as { error?: string } & T;
+    if (res && res.error) throw new Error(res.error);
+    return res;
+  }
+
+  async startCustomerSignup(input: SignUpInput): Promise<{ expiresAt: string }> {
+    return this.callSignupFn<{ expiresAt: string }>({
+      action: 'request',
+      email: input.email,
+      password: input.password,
+      fullName: input.fullName,
+      phone: input.phone,
+    });
+  }
+
+  async verifyCustomerEmail(email: string, code: string): Promise<void> {
+    await this.callSignupFn({ action: 'verify', email, code });
+  }
+
+  async resendCustomerCode(email: string): Promise<{ expiresAt: string }> {
+    return this.callSignupFn<{ expiresAt: string }>({ action: 'resend', email });
   }
 
   /* ---- Cardápio ---- */

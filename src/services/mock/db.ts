@@ -28,10 +28,25 @@ export interface MockState {
   drivers: Driver[];
   driverApplications: DriverApplication[];
   notifications: AppNotification[];
+  /** Cadastros de cliente pendentes de verificação de e-mail (código + prazo). */
+  pendingSignups: PendingSignup[];
+}
+
+/** Tentativa de cadastro aguardando o código de 6 dígitos. */
+export interface PendingSignup {
+  attemptId: string;
+  email: string;
+  fullName: string;
+  phone: string;
+  password: string; // mock local apenas (em produção é o Supabase Auth)
+  code: string;
+  createdAt: string;
+  expiresAt: string;
+  attempts: number;
 }
 
 const STORAGE_KEY = 'spd_mock_v1';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString();
 
@@ -285,6 +300,7 @@ function seed(): MockState {
     drivers,
     driverApplications: [pendingApplication],
     notifications: [],
+    pendingSignups: [],
   };
 }
 

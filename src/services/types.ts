@@ -107,6 +107,18 @@ export interface DataRepository {
   getProfileById(id: string): Promise<Profile | null>;
   getCustomers(): Promise<Profile[]>;
 
+  /* ---- Verificação de e-mail no cadastro do cliente ---- */
+  /**
+   * Inicia o cadastro do cliente: valida os dados, checa duplicidade, gera um
+   * código de 6 dígitos, envia por e-mail e deixa a conta PENDENTE de
+   * verificação. Devolve quando o código expira (nunca o código em si).
+   */
+  startCustomerSignup(input: SignUpInput): Promise<{ expiresAt: string }>;
+  /** Valida o código no backend; se correto e no prazo, ativa a conta. */
+  verifyCustomerEmail(email: string, code: string): Promise<void>;
+  /** Invalida o código anterior e envia um novo, reiniciando o prazo. */
+  resendCustomerCode(email: string): Promise<{ expiresAt: string }>;
+
   /* ---- Cardápio ---- */
   getCategories(): Promise<Category[]>;
   getProducts(): Promise<Product[]>;

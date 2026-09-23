@@ -4,6 +4,7 @@ import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Landing } from '@/pages/Landing';
 import { CustomerLogin } from '@/pages/auth/CustomerLogin';
 import { CustomerRegister } from '@/pages/auth/CustomerRegister';
+import { VerifyEmail } from '@/pages/auth/VerifyEmail';
 import { ForgotPassword } from '@/pages/auth/ForgotPassword';
 import { ResetPassword } from '@/pages/auth/ResetPassword';
 
@@ -39,6 +40,7 @@ export function App() {
       {/* ---------- Cliente ---------- */}
       <Route path="/login" element={<CustomerLogin />} />
       <Route path="/cadastro" element={<CustomerRegister />} />
+      <Route path="/verificar-email" element={<VerifyEmail />} />
       <Route path="/recuperar-senha" element={<ForgotPassword />} />
       <Route path="/reset" element={<ResetPassword />} />
       <Route

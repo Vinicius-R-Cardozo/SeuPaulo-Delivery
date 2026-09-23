@@ -31,6 +31,27 @@ import { uid, orderCode } from '@/utils/id';
 import { estimateEtaMinutes, pointAlongRoute } from '@/utils/geo';
 import { getDeliveryRoute } from '@/services/routing';
 import { verificationProvider } from '@/services/verification';
+import { validateEmail } from '@/utils/validation';
+
+/** Código de verificação de e-mail: 6 dígitos, válido por 5 minutos. */
+const CODE_TTL_MS = 5 * 60 * 1000;
+const genCode = () => String(Math.floor(100000 + Math.random() * 900000));
+
+/**
+ * "Envio" do código no backend mock: como não há e-mail em dev, publicamos o
+ * código só para a própria tela mostrar um aviso de desenvolvimento. O fluxo
+ * real (Supabase + Resend) manda por e-mail e NUNCA expõe o código ao front.
+ */
+function devDeliverCode(email: string, code: string): void {
+  if (typeof window === 'undefined') return;
+  console.info(`[dev] Código de verificação para ${email}: ${code}`);
+  // Guarda o último código para a tela de verificação ler ao montar (dev only).
+  (window as unknown as { __SPD_DEV_CODE?: { email: string; code: string } }).__SPD_DEV_CODE = {
+    email,
+    code,
+  };
+  window.dispatchEvent(new CustomEvent('spd:dev-code', { detail: { email, code } }));
+}
 import { toCapturedFile } from '@/components/onboarding/capture';
 
 /** Recomendação da triagem → status inicial da candidatura. */
@@ -250,6 +271,96 @@ class MockRepository implements DataRepository {
 
   async getCustomers(): Promise<Profile[]> {
     return getState().profiles.filter((p) => p.role === 'customer');
+  }
+
+  /* ---- Verificação de e-mail no cadastro do cliente ---- */
+  async startCustomerSignup(input: SignUpInput): Promise<{ expiresAt: string }> {
+    await wait();
+    const emailErr = validateEmail(input.email);
+    if (emailErr) throw new Error(emailErr);
+    const key = input.email.trim().toLowerCase();
+    if (getState().profiles.some((p) => p.email.toLowerCase() === key)) {
+      throw new Error('Já existe uma conta com este e-mail.');
+    }
+    const now = Date.now();
+    const code = genCode();
+    const expiresAt = new Date(now + CODE_TTL_MS).toISOString();
+    mutate((s) => {
+      // Invalida qualquer código anterior para este e-mail.
+      s.pendingSignups = s.pendingSignups.filter((p) => p.email.toLowerCase() !== key);
+      s.pendingSignups.push({
+        attemptId: uid('att'),
+        email: input.email.trim(),
+        fullName: input.fullName.trim(),
+        phone: input.phone.trim(),
+        password: input.password,
+        code,
+        createdAt: new Date(now).toISOString(),
+        expiresAt,
+        attempts: 0,
+      });
+    });
+    devDeliverCode(input.email.trim(), code);
+    return { expiresAt };
+  }
+
+  async verifyCustomerEmail(email: string, code: string): Promise<void> {
+    await wait(150);
+    const key = email.trim().toLowerCase();
+    const clean = (code || '').replace(/\D/g, '');
+    const pending = getState().pendingSignups.find((p) => p.email.toLowerCase() === key);
+    if (!pending || Date.now() > new Date(pending.expiresAt).getTime()) {
+      throw new Error('Este código expirou. Solicite um novo código para continuar.');
+    }
+    if (pending.code !== clean) {
+      mutate((s) => {
+        const p = s.pendingSignups.find((x) => x.email.toLowerCase() === key);
+        if (p) p.attempts += 1;
+      });
+      throw new Error(
+        'Código incorreto. Verifique o código enviado para seu e-mail e tente novamente.',
+      );
+    }
+    // Código correto e no prazo → cria a conta ativa e consome o código.
+    const profile: Profile = {
+      id: uid('u'),
+      role: 'customer',
+      fullName: pending.fullName,
+      email: pending.email,
+      phone: pending.phone,
+      createdAt: new Date().toISOString(),
+    };
+    mutate((s) => {
+      if (s.profiles.some((p) => p.email.toLowerCase() === key)) {
+        throw new Error('Esta conta já foi criada. Faça login.');
+      }
+      s.profiles.push(profile);
+      s.credentials[profile.email] = pending.password;
+      s.pendingSignups = s.pendingSignups.filter((p) => p.email.toLowerCase() !== key);
+    });
+  }
+
+  async resendCustomerCode(email: string): Promise<{ expiresAt: string }> {
+    await wait();
+    const key = email.trim().toLowerCase();
+    const pending = getState().pendingSignups.find((p) => p.email.toLowerCase() === key);
+    if (!pending) {
+      throw new Error('Cadastro não encontrado. Comece o cadastro novamente.');
+    }
+    const now = Date.now();
+    const code = genCode(); // novo código: o anterior deixa de valer
+    const expiresAt = new Date(now + CODE_TTL_MS).toISOString();
+    mutate((s) => {
+      const p = s.pendingSignups.find((x) => x.email.toLowerCase() === key);
+      if (p) {
+        p.code = code;
+        p.expiresAt = expiresAt;
+        p.createdAt = new Date(now).toISOString();
+        p.attempts = 0;
+      }
+    });
+    devDeliverCode(pending.email, code);
+    return { expiresAt };
   }
 
   /* ---- Cardápio ---- */

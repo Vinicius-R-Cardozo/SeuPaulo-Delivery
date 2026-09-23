@@ -150,6 +150,29 @@ export class HttpRepository implements DataRepository {
     return this.request<Profile[]>('/auth/customers');
   }
 
+  /* ---- Verificação de e-mail no cadastro do cliente ---- */
+  startCustomerSignup(input: SignUpInput): Promise<{ expiresAt: string }> {
+    return this.request<{ expiresAt: string }>('/auth/signup/start', {
+      method: 'POST',
+      auth: false,
+      body: input,
+    });
+  }
+  async verifyCustomerEmail(email: string, code: string): Promise<void> {
+    await this.request('/auth/signup/verify', {
+      method: 'POST',
+      auth: false,
+      body: { email, code },
+    });
+  }
+  resendCustomerCode(email: string): Promise<{ expiresAt: string }> {
+    return this.request<{ expiresAt: string }>('/auth/signup/resend', {
+      method: 'POST',
+      auth: false,
+      body: { email },
+    });
+  }
+
   /* ---- Cardápio ---- */
   getCategories(): Promise<Category[]> {
     return this.request<Category[]>('/categories', { auth: false });

@@ -5,7 +5,7 @@ import { AuthShell } from '@/components/layout/AuthShell';
 import { Input } from '@/components/ui/Input';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { Button } from '@/components/ui/Button';
-import { useAuth } from '@/contexts/AuthContext';
+import { repository } from '@/services';
 import { useToast } from '@/providers/ToastProvider';
 import { formatPhone } from '@/utils/format';
 import {
@@ -16,7 +16,6 @@ import {
 } from '@/utils/validation';
 
 export function CustomerRegister() {
-  const { signUp } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -38,9 +37,16 @@ export function CustomerRegister() {
     if (Object.values(next).some(Boolean)) return;
     setLoading(true);
     try {
-      await signUp({ ...form, role: 'customer' });
-      toast.success('Conta criada! Bem-vindo ao Seu Paulo. 🍻');
-      navigate('/app', { replace: true });
+      // Não finaliza a conta ainda: gera e envia o código de verificação.
+      const { expiresAt } = await repository.startCustomerSignup({ ...form, role: 'customer' });
+      try {
+        sessionStorage.setItem('spd_verify_email', form.email.trim());
+        sessionStorage.setItem('spd_verify_exp', String(new Date(expiresAt).getTime()));
+      } catch {
+        /* ignore */
+      }
+      toast.success('Enviamos um código de 6 dígitos para o seu e-mail.');
+      navigate('/verificar-email');
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
