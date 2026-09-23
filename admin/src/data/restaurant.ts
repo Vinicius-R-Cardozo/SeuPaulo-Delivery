@@ -18,8 +18,9 @@ export const RESTAURANT = {
   whatsapp: 'https://wa.me/553173529146',
   instagram: 'https://www.instagram.com/seupaulobuteco/',
   instagramHandle: '@seupaulobuteco',
-  /** Coordenadas da casa (extraídas do embed do Google Maps do site). */
-  location: { lat: -19.9503895, lng: -44.2166209 } as LatLng,
+  /** Coordenadas da casa — Rua Milton Vieira Pinto (CEP 32604-148), Betim/MG.
+   *  Verificadas por geocodificação (batem com rua e CEP). Toda entrega parte daqui. */
+  location: { lat: -19.9599330, lng: -44.1999790 } as LatLng,
   /** Raio de entrega em km. */
   deliveryRadiusKm: 8,
   /** Taxa base + por km, usada no cálculo do frete. */
