@@ -74,6 +74,7 @@ export interface SignUpInput {
 }
 
 export interface CreateOrderInput {
+  idempotencyKey: string;
   customer: Profile;
   items: CartItem[];
   fulfillment: FulfillmentType;

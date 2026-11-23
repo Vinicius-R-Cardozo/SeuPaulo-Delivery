@@ -79,8 +79,15 @@ async function send(job: Job): Promise<Result> {
 }
 
 Deno.serve(async request => {
-  const secret = Deno.env.get('ORDER_LIVE_WORKER_SECRET');
-  if (!secret || request.method !== 'POST' || request.headers.get('x-order-live-secret') !== secret)
+  const supplied = request.headers.get('x-order-live-secret') || '';
+  const fingerprint = Deno.env.get('ORDER_LIVE_WORKER_SECRET_SHA256');
+  const raw = Deno.env.get('ORDER_LIVE_WORKER_SECRET');
+  if (request.method !== 'POST' || !supplied || supplied.length > 512)
+    return new Response(null, { status: 403 });
+  // Hosted deployments keep the raw credential in Vault and send it over TLS.
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(supplied));
+  const hex = Array.from(new Uint8Array(digest), n => n.toString(16).padStart(2, '0')).join('');
+  if (fingerprint ? hex !== fingerprint : !raw || supplied !== raw)
     return new Response(null, { status: 403 });
   const keys = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}');
   const db = createClient(env('SUPABASE_URL'), keys.default || Object.values(keys)[0] || env('SUPABASE_SERVICE_ROLE_KEY'),

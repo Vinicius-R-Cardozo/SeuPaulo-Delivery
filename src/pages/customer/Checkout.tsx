@@ -4,6 +4,7 @@ import { ArrowLeft, Bike, Store, Plus, MapPin, Check, CreditCard, Banknote } fro
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/providers/ToastProvider';
+import { uuid } from '@/utils/id';
 import { startCustomerLive } from '@/services/orderLive';
 import { repository } from '@/services';
 import type { Address, FulfillmentType } from '@/types';
@@ -37,6 +38,7 @@ export function Checkout() {
   // Evita que o "carrinho vazio" redirecione logo após o pedido ser feito
   // (o clear() esvazia o carrinho e essa corrida mandava pro /carrinho).
   const placedRef = useRef(false);
+  const attempt = useRef<{ signature: string; key: string } | null>(null);
 
   useEffect(() => {
     if (items.length === 0 && !placedRef.current) navigate('/app/carrinho', { replace: true });
@@ -82,7 +84,12 @@ export function Checkout() {
       const changeValue =
         payment === 'cash' && needsChange ? Number(changeFor.replace(',', '.')) : undefined;
 
+      const signature = JSON.stringify([profile.id, items, fulfillment, selectedAddress?.id, payment, coupon?.code, changeValue, total]);
+      if (attempt.current?.signature !== signature) {
+        attempt.current = { signature, key: uuid() };
+      }
       const order = await repository.createOrder({
+        idempotencyKey: attempt.current.key,
         customer: profile,
         items,
         fulfillment,

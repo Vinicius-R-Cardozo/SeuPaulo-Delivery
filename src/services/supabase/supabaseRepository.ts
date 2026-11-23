@@ -510,6 +510,25 @@ class SupabaseRepository implements DataRepository {
   /* ---- Pedidos ---- */
   async createOrder(input: CreateOrderInput): Promise<Order> {
     if (input.paymentMethod === 'pix') throw new Error('PIX indisponível no momento.');
+    // Production validates prices, address ownership and coupons inside place_order.
+    const request = {
+      p_items: input.items.map(({ id, product, quantity, addons, notes }) => ({
+        id, productId: product.id, quantity, notes,
+        addons: addons.map(({ groupId, optionId }) => ({ groupId, optionId })),
+      })),
+      p_fulfillment: input.fulfillment,
+      p_address_id: input.address?.id ?? null,
+      p_payment_method: input.paymentMethod,
+      p_coupon_code: input.couponCode ?? null,
+      p_change_for: input.changeFor ?? null,
+      p_expected_total: input.total,
+      p_idempotency_key: input.idempotencyKey,
+    };
+    const placed = await this.sb.rpc('place_order', request);
+    if (!placed.error) return toOrder(placed.data);
+    // Older installations only support the RLS-protected insert path.
+    if (placed.error.code !== 'PGRST202') throw new Error(placed.error.message);
+
     const productIds = [...new Set(input.items.map((item) => item.product.id))];
     if (productIds.length === 0) throw new Error('Adicione um item ao carrinho.');
 
