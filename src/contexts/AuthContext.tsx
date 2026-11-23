@@ -1,3 +1,4 @@
+import { clearAppPush } from '@/services/appPush';
 import { clearCustomerLive } from '@/services/orderLive';
 import { stopTracking } from '@/services/deliveryTracking';
 import {
@@ -64,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    await Promise.all([stopTracking(), clearCustomerLive().catch(() => {})]);
+    await Promise.all([stopTracking(), clearCustomerLive().catch(() => {}), clearAppPush().catch(() => {})]);
     await repository.signOut();
     setProfileState(null);
   }, []);

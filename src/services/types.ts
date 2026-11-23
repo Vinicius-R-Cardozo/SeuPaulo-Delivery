@@ -155,6 +155,7 @@ export interface DataRepository {
   /* ---- Entregadores ---- */
   getDrivers(): Promise<Driver[]>;
   getDriver(id: string): Promise<Driver | null>;
+  subscribeDriver(id: string, cb: (driver: Driver | null) => void): Unsubscribe;
   setDriverStatus(id: string, status: DriverStatus): Promise<Driver>;
   setDriverOnline(id: string, online: boolean): Promise<Driver>;
   setDriverLocation(id: string, location: LatLng): Promise<Driver>;
@@ -164,6 +165,7 @@ export interface DataRepository {
   registerDriver(input: DriverApplicationInput): Promise<DriverRegistration>;
   /** Candidatura do próprio entregador (acompanhamento no app). */
   getDriverApplication(userId: string): Promise<DriverApplication | null>;
+  resubmitDriverDocuments(application: DriverApplication, documents: CapturedMedia[]): Promise<DriverApplication>;
   /** Todas as candidaturas (painel administrativo). */
   getDriverApplications(): Promise<DriverApplication[]>;
   /** Decisão do administrador; registra no histórico de auditoria. */

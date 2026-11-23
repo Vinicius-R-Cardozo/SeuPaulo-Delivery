@@ -1,24 +1,21 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Driver } from '@/types';
 import { repository } from '@/services';
 import { useAuth } from '@/contexts/AuthContext';
 
-/** Carrega e mantém o registro do entregador logado. */
 export function useDriver() {
   const { profile } = useAuth();
-  const [driver, setDriver] = useState<Driver | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const refresh = useCallback(async () => {
-    if (!profile) return;
-    const d = await repository.getDriver(profile.id);
-    setDriver(d);
-    setLoading(false);
-  }, [profile]);
+  const driverId = profile?.id;
+  const [record, setRecord] = useState<{ id: string; driver: Driver | null } | null>(null);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (!driverId) return;
+    return repository.subscribeDriver(driverId, driver => setRecord({ id: driverId, driver }));
+  }, [driverId]);
 
-  return { driver, loading, refresh, setDriver };
+  return {
+    driver: record && record.id === driverId ? record.driver : null,
+    loading: Boolean(driverId && record?.id !== driverId),
+    setDriver: (driver: Driver) => setRecord({ id: driver.id, driver }),
+  };
 }

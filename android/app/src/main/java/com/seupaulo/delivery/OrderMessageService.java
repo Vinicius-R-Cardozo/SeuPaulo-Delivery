@@ -12,6 +12,7 @@ import org.json.JSONObject;
 
 public class OrderMessageService extends FirebaseMessagingService {
     @Override public void onNewToken(String token) {
+        AppPush.changed();
         SharedPreferences prefs = getSharedPreferences("orderLiveSettings", MODE_PRIVATE);
         String old = prefs.getString("token", null);
         String endpoint = prefs.getString("endpoint", null);
@@ -38,6 +39,7 @@ public class OrderMessageService extends FirebaseMessagingService {
     }
 
     @Override public void onMessageReceived(RemoteMessage message) {
+        AppPush.show(this, message.getData());
         String update = message.getData().get("orderLive");
         if (update == null) return;
         try { OrderNotification.show(this, new JSONObject(update), false); }

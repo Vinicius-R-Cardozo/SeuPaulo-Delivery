@@ -1,6 +1,8 @@
-import { useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { followAppPush } from '@/services/appPush';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 
 import { Landing } from '@/pages/Landing';
@@ -35,6 +37,13 @@ import { DriverProfile } from '@/pages/driver/DriverProfile';
 
 export function App() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const currentNavigate = useRef(navigate);
+  currentNavigate.current = navigate;
+  const userId = useAuth().profile?.id;
+  useEffect(() => {
+    if (userId) return followAppPush(userId, path => currentNavigate.current(path));
+  }, [userId]);
 
   useLayoutEffect(() => {
     if (Capacitor.isNativePlatform()) window.scrollTo({ top: 0, behavior: 'instant' });

@@ -285,7 +285,8 @@ export type ReviewAction =
   | 'auto_analysis'
   | 'approved'
   | 'rejected'
-  | 'resubmission_requested';
+  | 'resubmission_requested'
+  | 'resubmitted';
 
 /** Item do histórico de análise/decisão (auditoria). */
 export interface ReviewEvent {

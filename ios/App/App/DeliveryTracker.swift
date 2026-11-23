@@ -6,6 +6,7 @@ final class DeliveryViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(DeliveryTracker())
         bridge?.registerPluginInstance(OrderLive())
+        bridge?.registerPluginInstance(AppPush())
     }
 }
 

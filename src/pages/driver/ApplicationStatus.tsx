@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { CircleAlert, Clock, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { repository } from '@/services';
-import type { DriverApplication, DriverApplicationStatus as Status } from '@/types';
+import type { DriverApplication, DriverApplicationStatus as Status, DriverRegistrationDocumentKind } from '@/types';
+import { PhotoCapture } from '@/components/onboarding/PhotoCapture';
+import type { CapturedMedia } from '@/components/onboarding/capture';
+import { Button } from '@/components/ui/Button';
 import { FullScreenLoader } from '@/components/ui/Spinner';
 import { formatDateTime } from '@/utils/format';
 
@@ -63,7 +66,7 @@ export function ApplicationStatus({ fallbackStatus }: { fallbackStatus?: Status 
     const load = () =>
       repository.getDriverApplication(profile.id).then((a) => {
         if (active) {
-          setApp(a);
+          setApp((current) => a && current?.id === a.id && current.updatedAt > a.updatedAt ? current : a);
           setLoading(false);
         }
       });
@@ -107,12 +110,11 @@ export function ApplicationStatus({ fallbackStatus }: { fallbackStatus?: Status 
             </div>
           )}
 
-          {status === 'needs_resubmission' && (
-            <p className="mt-4 text-xs text-cream-3">
-              Fale com a administração pelo WhatsApp do boteco para reenviar o item solicitado.
-            </p>
-          )}
         </div>
+
+        {app?.status === 'needs_resubmission' && (
+          <DocumentResubmission key={app.updatedAt} application={app} onSubmitted={setApp} />
+        )}
 
         {app && app.reviews.length > 0 && (
           <div className="card mt-4 p-5">
@@ -125,7 +127,7 @@ export function ApplicationStatus({ fallbackStatus }: { fallbackStatus?: Status 
                       <ShieldCheck size={15} className="text-success" />
                     ) : r.action === 'rejected' ? (
                       <XCircle size={15} className="text-danger" />
-                    ) : r.action === 'resubmission_requested' ? (
+                    ) : r.action === 'resubmission_requested' || r.action === 'resubmitted' ? (
                       <RefreshCw size={15} className="text-amber" />
                     ) : (
                       <Clock size={15} />
@@ -145,6 +147,111 @@ export function ApplicationStatus({ fallbackStatus }: { fallbackStatus?: Status 
   );
 }
 
+const DOCUMENT_LABELS = {
+  selfie: 'Selfie',
+  cnh_front: 'Frente da CNH',
+  cnh_back: 'Verso da CNH',
+  vehicle_doc: 'Documento da moto (CRLV-e)',
+  bike_photo: 'Foto da bicicleta',
+} satisfies Record<DriverRegistrationDocumentKind, string>;
+
+function DocumentResubmission({
+  application,
+  onSubmitted,
+}: {
+  application: DriverApplication;
+  onSubmitted: (next: DriverApplication) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [activeKind, setActiveKind] = useState<DriverRegistrationDocumentKind>();
+  const [documents, setDocuments] = useState<Partial<Record<DriverRegistrationDocumentKind, CapturedMedia>>>({});
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const kinds: DriverRegistrationDocumentKind[] = application.vehicle === 'moto'
+    ? ['selfie', 'cnh_front', 'cnh_back', 'vehicle_doc']
+    : ['selfie', 'bike_photo'];
+  const replacements = Object.values(documents);
+
+  const submit = async () => {
+    setSending(true);
+    setError('');
+    try {
+      onSubmitted(await repository.resubmitDriverDocuments(application, replacements));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível reenviar os documentos. Tente novamente.');
+      setSending(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <Button className="mt-4" variant="amber" fullWidth onClick={() => setOpen(true)}>
+        Reenviar documentos
+      </Button>
+    );
+  }
+
+  return (
+    <section className="card mt-4 space-y-4 p-5" aria-labelledby="resubmission-title">
+      <h2 id="resubmission-title" className="text-base font-semibold text-cream">Reenviar documentos</h2>
+      <p className="text-sm text-cream-3">
+        Selecione os documentos solicitados. As outras imagens do cadastro serão mantidas.
+      </p>
+      <ul className="divide-y divide-ink-3">
+        {kinds.map((kind) => (
+          <li key={kind} className="py-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm text-cream">
+                {DOCUMENT_LABELS[kind]}
+                {documents[kind] && <span className="block text-xs text-success">Nova imagem selecionada</span>}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={sending}
+                aria-expanded={activeKind === kind}
+                aria-label={`Alterar ${DOCUMENT_LABELS[kind]}`}
+                onClick={() => setActiveKind(activeKind === kind ? undefined : kind)}
+              >
+                {activeKind === kind ? 'Fechar' : 'Alterar'}
+              </Button>
+            </div>
+            {activeKind === kind && !sending && (
+              <div className="mt-3 pb-2">
+                {documents[kind] ? (
+                  <>
+                    <img src={documents[kind]?.dataUrl} alt={DOCUMENT_LABELS[kind]} className="max-h-56 w-full rounded-xl object-contain" />
+                    <Button type="button" size="sm" variant="ghost" className="mt-2" onClick={() => {
+                      setDocuments((current) => {
+                        const remaining = { ...current };
+                        delete remaining[kind];
+                        return remaining;
+                      });
+                    }}>
+                      Remover nova imagem
+                    </Button>
+                  </>
+                ) : (
+                  <PhotoCapture
+                    kind={kind}
+                    label={DOCUMENT_LABELS[kind]}
+                    onCapture={(media) => setDocuments((current) => ({ ...current, [kind]: media }))}
+                  />
+                )}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+      <Button variant="amber" fullWidth loading={sending} disabled={!replacements.length} onClick={submit}>
+        Enviar para análise
+      </Button>
+    </section>
+  );
+}
+
 function reviewLabel(action: DriverApplication['reviews'][number]['action']): string {
   return {
     submitted: 'Cadastro enviado',
@@ -152,5 +259,6 @@ function reviewLabel(action: DriverApplication['reviews'][number]['action']): st
     approved: 'Cadastro aprovado',
     rejected: 'Cadastro reprovado',
     resubmission_requested: 'Novo envio solicitado',
+    resubmitted: 'Documentos reenviados',
   }[action];
 }

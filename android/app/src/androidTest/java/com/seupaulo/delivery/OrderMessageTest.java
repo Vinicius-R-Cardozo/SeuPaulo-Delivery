@@ -24,6 +24,39 @@ public class OrderMessageTest {
         }
     }
 
+    @Test public void showsAppPushOnlyWithActiveRegistrationAndReplacesRetries() throws Exception {
+        String event = java.util.UUID.randomUUID().toString();
+        String tag = "seupaulo-alert:" + event;
+        NotificationManager manager = ctx.getSystemService(NotificationManager.class);
+        android.content.SharedPreferences settings = ctx.getSharedPreferences("appPushSettings", Context.MODE_PRIVATE);
+        boolean previous = settings.getBoolean("enabled", false);
+        RemoteMessage notice = new RemoteMessage.Builder("qa")
+            .addData("appPush", event).addData("route", "/entregador")
+            .addData("title", "Nova entrega disponível").addData("body", "Abra o painel do entregador.").build();
+        MessageReceiver receiver = new MessageReceiver(ctx);
+        try {
+            settings.edit().putBoolean("enabled", false).apply();
+            receiver.onMessageReceived(notice);
+            assertEquals(0, matching(manager, tag));
+            settings.edit().putBoolean("enabled", true).apply();
+            receiver.onMessageReceived(notice);
+            for (int i = 0; i < 40 && matching(manager, tag) != 1; i++) Thread.sleep(100);
+            assertEquals(1, matching(manager, tag));
+            receiver.onMessageReceived(notice);
+            assertEquals(1, matching(manager, tag));
+        } finally {
+            manager.cancel(tag, 1);
+            settings.edit().putBoolean("enabled", previous).apply();
+        }
+    }
+
+    private int matching(NotificationManager manager, String tag) {
+        int count = 0;
+        for (StatusBarNotification note : manager.getActiveNotifications())
+            if (tag.equals(note.getTag())) count++;
+        return count;
+    }
+
     private Notification find() {
         for (StatusBarNotification sbn : ctx.getSystemService(NotificationManager.class).getActiveNotifications())
             if (order.equals(sbn.getTag())) return sbn.getNotification();

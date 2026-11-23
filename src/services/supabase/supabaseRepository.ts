@@ -29,6 +29,7 @@ import type {
   SignUpInput,
   Unsubscribe,
 } from '@/services/types';
+import type { CapturedMedia } from '@/components/onboarding/capture';
 import { getSupabase, isSupabaseConfigured } from './client';
 import { estimateEtaMinutes } from '@/utils/geo';
 import { hasRole } from '@/utils/roles';
@@ -667,7 +668,8 @@ class SupabaseRepository implements DataRepository {
     return data.map(toDriver);
   }
   async getDriver(id: string): Promise<Driver | null> {
-    const { data } = await this.sb.from('drivers').select('*').eq('id', id).maybeSingle();
+    const { data, error } = await this.sb.from('drivers').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
     return data ? toDriver(data) : null;
   }
   async setDriverStatus(id: string, status: DriverStatus): Promise<Driver> {
@@ -785,6 +787,27 @@ class SupabaseRepository implements DataRepository {
     return { profile, application: toApplication(appRow) };
   }
 
+  async resubmitDriverDocuments(application: DriverApplication, documents: CapturedMedia[]): Promise<DriverApplication> {
+    const uploadId = uuid();
+    for (const document of documents) {
+      const path = `${application.userId}/reenvios/${uploadId}/${document.kind}.jpg`;
+      const { error } = await this.sb.storage
+        .from(DOCS_BUCKET)
+        .upload(path, document.blob, { contentType: document.mime, upsert: false });
+      if (error) throw new Error('Não foi possível enviar as imagens. Verifique sua conexão e tente novamente.');
+    }
+
+    const { data, error } = await this.sb.rpc('resubmit_driver_documents', {
+      p_application: application.id,
+      p_expected_updated_at: application.updatedAt,
+      p_upload: uploadId,
+      p_kinds: documents.map((document) => document.kind),
+    });
+    if (error?.code === 'P0001') throw new Error(error.message);
+    if (error || !data) throw new Error('Não foi possível confirmar o reenvio. Tente novamente.');
+    return toApplication(data as Row);
+  }
+
   async getDriverApplication(userId: string): Promise<DriverApplication | null> {
     const { data } = await this.sb
       .from('driver_applications')
@@ -840,7 +863,14 @@ class SupabaseRepository implements DataRepository {
   }
 
   /* ---- Realtime ---- */
-  private orderFeed<T>(name: string, read: () => Promise<T>, cb: (value: T) => void, filter?: string): Unsubscribe {
+  private tableFeed<T>(
+    table: 'orders' | 'drivers',
+    name: string,
+    read: () => Promise<T>,
+    cb: (value: T) => void,
+    filter?: string,
+    fallbackMs = table === 'drivers' ? 5000 : 10000,
+  ): Unsubscribe {
     let active = true;
     let reading = false;
     let again = false;
@@ -859,26 +889,31 @@ class SupabaseRepository implements DataRepository {
       }
     };
     const channel = this.sb.channel(name)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table, filter }, refresh)
       .subscribe(state => { if (state === 'SUBSCRIBED') void refresh(); });
     void refresh();
-    const timer = window.setInterval(refresh, 10000);
+    const timer = window.setInterval(refresh, fallbackMs);
     document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('online', refresh);
     return () => {
       active = false;
       clearInterval(timer);
       document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('online', refresh);
       void this.sb.removeChannel(channel);
     };
   }
+  subscribeDriver(id: string, cb: (driver: Driver | null) => void): Unsubscribe {
+    return this.tableFeed('drivers', 'driver:' + id, () => this.getDriver(id), cb, 'id=eq.' + id);
+  }
   subscribeOrder(orderId: string, cb: (order: Order | null) => void): Unsubscribe {
-    return this.orderFeed('order:' + orderId, () => this.getOrder(orderId), cb, 'id=eq.' + orderId);
+    return this.tableFeed('orders', 'order:' + orderId, () => this.getOrder(orderId), cb, 'id=eq.' + orderId);
   }
   subscribeOrders(cb: (orders: Order[]) => void): Unsubscribe {
-    return this.orderFeed('orders:all', () => this.getAllOrders(), cb);
+    return this.tableFeed('orders', 'orders:all', () => this.getAllOrders(), cb);
   }
   subscribeAvailableDeliveries(cb: (orders: Order[]) => void): Unsubscribe {
-    return this.orderFeed('orders:available', () => this.getAvailableDeliveries(), cb);
+    return this.tableFeed('orders', 'orders:available', () => this.getAvailableDeliveries(), cb, undefined, 4000);
   }
 }
 

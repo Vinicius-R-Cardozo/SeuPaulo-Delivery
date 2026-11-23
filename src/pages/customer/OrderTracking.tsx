@@ -26,7 +26,7 @@ export function OrderTracking() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (order?.driverId) repository.getDriver(order.driverId).then(setDriver);
+    if (order?.driverId) repository.getDriver(order.driverId).then(setDriver).catch(() => {});
   }, [order?.driverId]);
 
   // Busca o código de entrega quando o pedido está perto de ser entregue.

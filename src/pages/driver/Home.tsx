@@ -20,20 +20,21 @@ export function DriverHome() {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const { driver, loading, refresh } = useDriver();
+  const { driver, loading, setDriver } = useDriver();
 
   const [available, setAvailable] = useState<Order[]>([]);
   const [myOrders, setMyOrders] = useState<Order[]>([]);
   const [accepting, setAccepting] = useState<string | null>(null);
 
+  const canViewOffers = driver?.status === 'approved' && driver.online;
   useEffect(() => {
-    if (!driver || driver.status !== 'approved' || !driver.online) {
+    if (!canViewOffers) {
       setAvailable([]);
       return;
     }
     const unsub = repository.subscribeAvailableDeliveries(setAvailable);
     return unsub;
-  }, [driver]);
+  }, [driver?.id, canViewOffers]);
 
   useEffect(() => {
     if (!profile) return;
@@ -45,8 +46,11 @@ export function DriverHome() {
 
   const toggleOnline = async () => {
     if (!driver) return;
-    await repository.setDriverOnline(driver.id, !driver.online);
-    refresh();
+    try {
+      setDriver(await repository.setDriverOnline(driver.id, !driver.online));
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   };
 
   const accept = async (order: Order) => {
@@ -157,7 +161,7 @@ export function DriverHome() {
         {!driver.online ? (
           <EmptyState emoji="😴" title="Você está offline" description="Fique online para ver os pedidos." />
         ) : available.length === 0 ? (
-          <EmptyState emoji="📭" title="Nenhum pedido agora" description="Assim que sair um pedido, ele aparece aqui." />
+          <EmptyState emoji="📭" title="Nenhum pedido agora" description="Entregas de outros clientes aparecem aqui assim que a loja confirma o pedido." />
         ) : (
           <div className="space-y-3">
             {available.map((o) => {
