@@ -51,11 +51,11 @@ export function Home() {
         </div>
       </div>}
 
-      {/* Mais pedidos */}
+      {/* Destaques do cardápio */}
       {(loading || popular.length > 0) && <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="display flex items-center gap-2 text-lg text-cream">
-            <Flame size={18} className="text-brand-2" /> Mais pedidos
+            <Flame size={18} className="text-brand-2" /> Destaques
           </h2>
           <Link to="/app/cardapio" className="text-sm text-brand-2">
             Ver tudo

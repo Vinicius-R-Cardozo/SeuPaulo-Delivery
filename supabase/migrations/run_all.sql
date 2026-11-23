@@ -418,7 +418,7 @@ create policy "notifications: dono marca como lida"
 
 -- >>>>>>>>>> 0003_seed.sql <<<<<<<<<<
 -- =====================================================================
--- Seu Paulo Delivery — Seed do cardápio e cupons (gerado automaticamente).
+-- Seu Paulo Delivery — Seed do cardápio (gerado automaticamente).
 -- NÃO edite à mão: rode "npm run gen:seed". Rode após 0002_rls.sql.
 -- =====================================================================
 
@@ -457,12 +457,6 @@ insert into public.products (id, category_slug, name, description, price, image,
 insert into public.products (id, category_slug, name, description, price, image, available, serves, tags, popular, is_new, addon_groups) values ('p-agua', 'bebidas', 'Água Mineral 500ml', 'Com ou sem gás.', 4.5, '/canecas.jpg', true, null, array[]::text[], false, false, '[{"id":"g-agua","name":"Tipo","type":"single","required":true,"min":1,"max":1,"options":[{"id":"ag-sem","name":"Sem gás","price":0},{"id":"ag-com","name":"Com gás","price":0}]}]'::jsonb) on conflict (id) do update set name=excluded.name, description=excluded.description, price=excluded.price, image=excluded.image, available=excluded.available, serves=excluded.serves, tags=excluded.tags, popular=excluded.popular, is_new=excluded.is_new, addon_groups=excluded.addon_groups;
 insert into public.products (id, category_slug, name, description, price, image, available, serves, tags, popular, is_new, addon_groups) values ('p-sucos', 'bebidas', 'Suco Natural 500ml', 'Feito na hora. Laranja, maracujá, abacaxi ou limão.', 11.9, '/menu-caipirinhas.jpg', true, null, array[]::text[], false, false, '[{"id":"g-suco","name":"Sabor","type":"single","required":true,"min":1,"max":1,"options":[{"id":"su-laranja","name":"Laranja","price":0},{"id":"su-maracuja","name":"Maracujá","price":0},{"id":"su-abacaxi","name":"Abacaxi","price":0},{"id":"su-limao","name":"Limão","price":0}]}]'::jsonb) on conflict (id) do update set name=excluded.name, description=excluded.description, price=excluded.price, image=excluded.image, available=excluded.available, serves=excluded.serves, tags=excluded.tags, popular=excluded.popular, is_new=excluded.is_new, addon_groups=excluded.addon_groups;
 
--- Cupons de exemplo
-insert into public.coupons (code, description, type, value, min_subtotal, max_uses, used_count, expires_at, active) values
-  ('BEMVINDO10', '10% de desconto no primeiro pedido', 'percent', 10, 30, 1000, 0, now() + interval '90 days', true),
-  ('SEUPAULO',   'R$ 15 off em pedidos acima de R$ 80', 'fixed', 15, 80, 500, 0, now() + interval '60 days', true),
-  ('PROMOCAO',   '20% off na semana do boteco', 'percent', 20, 50, 200, 0, now() + interval '30 days', true)
-on conflict (code) do nothing;
 
 -- >>>>>>>>>> 0005_delivery_codes.sql <<<<<<<<<<
 -- ============================================================

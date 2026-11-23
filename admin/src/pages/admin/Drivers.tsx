@@ -125,7 +125,7 @@ export function AdminDrivers() {
 
                 <div className="mt-3 flex items-center gap-4 text-xs text-cream-3">
                   <span className="flex items-center gap-1">
-                    <Star size={13} className="text-amber" /> {d.rating.toFixed(1)}
+                    <Star size={13} className="text-amber" /> {d.rating > 0 ? d.rating.toFixed(1) : 'Sem avaliações'}
                   </span>
                   <span className="flex items-center gap-1">
                     <Package size={13} /> {d.totalDeliveries} entregas

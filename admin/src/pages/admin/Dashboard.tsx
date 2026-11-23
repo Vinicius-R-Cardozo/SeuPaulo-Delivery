@@ -27,7 +27,7 @@ export function Dashboard() {
           accent="amber"
         />
         <Kpi icon={<Bike size={20} />} label="Entregas em andamento" value={String(stats.inDelivery)} accent="info" />
-        <Kpi icon={<Users size={20} />} label="Clientes" value={String(stats.customers)} accent="success" />
+        <Kpi icon={<Users size={20} />} label="Clientes com pedidos" value={String(stats.customers)} accent="success" />
       </div>
 
       {/* Gráfico + pedidos recentes */}

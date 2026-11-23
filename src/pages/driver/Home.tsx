@@ -121,7 +121,7 @@ export function DriverHome() {
       <div className="grid grid-cols-3 gap-3">
         <Stat icon={<Wallet size={16} />} label="Hoje" value={formatBRL(todayEarnings)} />
         <Stat icon={<Package size={16} />} label="Entregas" value={String(driver.totalDeliveries)} />
-        <Stat icon={<CircleCheck size={16} />} label="Nota" value={driver.rating.toFixed(1)} />
+        <Stat icon={<CircleCheck size={16} />} label="Nota" value={driver.rating > 0 ? driver.rating.toFixed(1) : '—'} />
       </div>
 
       {/* Entregas em andamento */}

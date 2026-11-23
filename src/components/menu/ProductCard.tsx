@@ -40,7 +40,7 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <h3 className="font-semibold text-cream">{product.name}</h3>
-          {product.popular && <Badge className="bg-amber/15 text-amber">⭐ Top</Badge>}
+          {product.popular && <Badge className="bg-amber/15 text-amber">Destaque</Badge>}
           {product.isNew && <Badge className="bg-success/15 text-success">Novo</Badge>}
         </div>
         <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-cream-3">

@@ -75,7 +75,7 @@ export function DriverProfile() {
           <div className="mt-4 grid grid-cols-2 gap-3 border-t border-ink-3 pt-4 text-center">
             <div>
               <p className="flex items-center justify-center gap-1 font-mono text-lg font-bold text-cream">
-                <Star size={15} className="text-amber" /> {driver.rating.toFixed(1)}
+                <Star size={15} className="text-amber" /> {driver.rating > 0 ? driver.rating.toFixed(1) : '—'}
               </p>
               <p className="text-[11px] text-cream-3">Avaliação</p>
             </div>

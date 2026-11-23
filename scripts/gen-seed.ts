@@ -1,6 +1,6 @@
 /**
  * Gera supabase/migrations/0003_seed.sql a partir dos dados reais do cardápio
- * (src/data/menu.ts) e dos cupons. Rode com: npm run gen:seed
+ * (src/data/menu.ts). Rode com: npm run gen:seed
  */
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -14,7 +14,7 @@ const arr = (a: string[] = []) =>
   `array[${a.map((x) => q(x)).join(',')}]::text[]`;
 
 let sql = `-- =====================================================================
--- Seu Paulo Delivery — Seed do cardápio e cupons (gerado automaticamente).
+-- Seu Paulo Delivery — Seed do cardápio (gerado automaticamente).
 -- NÃO edite à mão: rode "npm run gen:seed". Rode após 0002_rls.sql.
 -- =====================================================================
 
@@ -36,14 +36,6 @@ for (const p of PRODUCTS) {
   }, ${arr(p.tags)}, ${!!p.popular}, ${!!p.isNew}, ${json(p.addonGroups)}) on conflict (id) do update set name=excluded.name, description=excluded.description, price=excluded.price, image=excluded.image, available=excluded.available, serves=excluded.serves, tags=excluded.tags, popular=excluded.popular, is_new=excluded.is_new, addon_groups=excluded.addon_groups;\n`;
 }
 
-sql += `
--- Cupons de exemplo
-insert into public.coupons (code, description, type, value, min_subtotal, max_uses, used_count, expires_at, active) values
-  ('BEMVINDO10', '10% de desconto no primeiro pedido', 'percent', 10, 30, 1000, 0, now() + interval '90 days', true),
-  ('SEUPAULO',   'R$ 15 off em pedidos acima de R$ 80', 'fixed', 15, 80, 500, 0, now() + interval '60 days', true),
-  ('PROMOCAO',   '20% off na semana do boteco', 'percent', 20, 50, 200, 0, now() + interval '30 days', true)
-on conflict (code) do nothing;
-`;
 
 const out = resolve(__dirname, '../supabase/migrations/0003_seed.sql');
 writeFileSync(out, sql, 'utf8');

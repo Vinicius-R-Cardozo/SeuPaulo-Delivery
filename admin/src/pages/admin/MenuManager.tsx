@@ -300,7 +300,7 @@ function ProductEditor({
         {/* Flags */}
         <div className="flex flex-wrap gap-4">
           <Toggle label="Disponível" checked={form.available} onChange={(v) => setForm((f) => ({ ...f, available: v }))} />
-          <Toggle label="⭐ Popular" checked={form.popular} onChange={(v) => setForm((f) => ({ ...f, popular: v }))} />
+          <Toggle label="Destaque" checked={form.popular} onChange={(v) => setForm((f) => ({ ...f, popular: v }))} />
           <Toggle label="Novidade" checked={form.isNew} onChange={(v) => setForm((f) => ({ ...f, isNew: v }))} />
         </div>
       </div>
