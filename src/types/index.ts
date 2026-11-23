@@ -14,6 +14,8 @@ export interface Profile {
   phone: string;
   createdAt: string;
   avatarUrl?: string | null;
+  customerEnabled?: boolean;
+  driverEnabled?: boolean;
 }
 
 /* ----------------------------- Endereços ----------------------------- */

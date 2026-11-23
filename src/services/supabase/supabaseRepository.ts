@@ -31,7 +31,8 @@ import type {
 } from '@/services/types';
 import { getSupabase, isSupabaseConfigured } from './client';
 import { estimateEtaMinutes } from '@/utils/geo';
-import { orderCode } from '@/utils/id';
+import { hasRole } from '@/utils/roles';
+import { orderCode, uuid } from '@/utils/id';
 import { RESTAURANT } from '@/data/restaurant';
 
 const DOCS_BUCKET = 'driver-docs';
@@ -51,6 +52,7 @@ function toProfile(r: Row): Profile {
   return {
     id: r.id as string,
     role: r.role as Profile['role'],
+    customerEnabled: r.customer_enabled === true,
     fullName: r.full_name as string,
     email: r.email as string,
     phone: (r.phone as string) ?? '',
@@ -217,7 +219,14 @@ class SupabaseRepository implements DataRepository {
   private async profileFromUser(userId: string): Promise<Profile> {
     const { data, error } = await this.sb.from('profiles').select('*').eq('id', userId).single();
     if (error) throw new Error(error.message);
-    return toProfile(data);
+    const profile = toProfile(data);
+    if (profile.role === 'customer') {
+      const driverApplication = await this.sb.from('driver_applications').select('id')
+        .eq('user_id', userId).limit(1).maybeSingle();
+      if (driverApplication.error) throw new Error(driverApplication.error.message);
+      profile.driverEnabled = Boolean(driverApplication.data);
+    }
+    return profile;
   }
 
   /* ---- Auth ---- */
@@ -238,8 +247,12 @@ class SupabaseRepository implements DataRepository {
       throw new Error('Confirme seu e-mail para entrar. Refaça o cadastro para receber um novo código.');
     }
     const profile = await this.profileFromUser(data.user.id);
-    if (role && profile.role !== role) {
+    if (role && !hasRole(profile, role)) {
       await this.sb.auth.signOut();
+      if (role === 'driver' && profile.role === 'customer')
+        throw new Error('Complete o cadastro de entregador usando o e-mail e a senha da sua conta.');
+      if (role === 'customer' && profile.role === 'driver')
+        throw new Error('Ative o perfil de cliente em Criar conta, usando o e-mail e a senha da sua conta.');
       throw new Error('Esta conta não tem acesso a este ambiente.');
     }
     return { profile };
@@ -308,18 +321,16 @@ class SupabaseRepository implements DataRepository {
   }
 
   async updateProfile(userId: string, patch: Partial<Profile>): Promise<Profile> {
-    const { data, error } = await this.sb
+    const { error } = await this.sb
       .from('profiles')
       .update({
         full_name: patch.fullName,
         phone: patch.phone,
         avatar_url: patch.avatarUrl,
       })
-      .eq('id', userId)
-      .select('*')
-      .single();
+      .eq('id', userId);
     if (error) throw new Error(error.message);
-    return toProfile(data);
+    return this.profileFromUser(userId);
   }
 
   async changePassword(_userId: string, _current: string, next: string): Promise<void> {
@@ -336,7 +347,7 @@ class SupabaseRepository implements DataRepository {
     const { data, error } = await this.sb
       .from('profiles')
       .select('*')
-      .eq('role', 'customer')
+      .or('role.eq.customer,and(role.eq.driver,customer_enabled.eq.true)')
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     return data.map(toProfile);
@@ -601,10 +612,13 @@ class SupabaseRepository implements DataRepository {
     return data.map(toOrder);
   }
   async getAvailableDeliveries(): Promise<Order[]> {
+    const { data: { session } } = await this.sb.auth.getSession();
+    if (!session) return [];
     const { data, error } = await this.sb
       .from('orders')
       .select('*')
       .is('driver_id', null)
+      .neq('customer_id', session.user.id)
       .in('status', ['confirmed','preparing','ready'])
       .eq('fulfillment', 'delivery');
     if (error) throw new Error(error.message);
@@ -689,29 +703,18 @@ class SupabaseRepository implements DataRepository {
 
   /* ---- Cadastro/onboarding de entregador ---- */
   async registerDriver(input: DriverApplicationInput): Promise<DriverRegistration> {
-    // 1. Cria a conta (Auth). O gatilho handle_new_user cria o profile.
-    const { data, error } = await this.sb.auth.signUp({
-      email: input.email,
-      password: input.password,
-      options: { data: { full_name: input.fullName, phone: input.phone, role: 'driver' } },
+    // Reuse a verified customer identity or create an identity for a new driver.
+    const credentials = await this.callSignupFn<{ access_token: string; refresh_token: string }>({
+      action: 'driver-account', email: input.email, password: input.password,
+      fullName: input.fullName, phone: input.phone,
     });
-    if (error) {
-      const m = error.message.toLowerCase();
-      if (m.includes('already registered') || m.includes('already been registered')) {
-        throw new Error('Já existe uma conta com este e-mail.');
-      }
-      if (m.includes('rate limit')) {
-        throw new Error('Muitas tentativas agora. Aguarde alguns minutos e tente de novo.');
-      }
-      throw new Error(error.message);
-    }
-    if (!data.session) {
-      throw new Error(
-        'Conta criada, mas falta confirmar o e-mail. Desative a confirmação de e-mail no Supabase ' +
-          '(Authentication → Providers → Email) para o cadastro entrar direto.',
-      );
-    }
-    const userId = data.user!.id;
+    const { data, error } = await this.sb.auth.setSession(credentials);
+    if (error || !data.user) throw new Error('Não foi possível entrar na conta. Tente novamente.');
+    const userId = data.user.id;
+    const { data: existing, error: lookupError } = await this.sb.from('driver_applications')
+      .select('id').eq('user_id', userId).limit(1).maybeSingle();
+    if (lookupError) throw new Error(lookupError.message);
+    if (existing) throw new Error('Seu cadastro de entregador já foi enviado. Entre para acompanhar.');
 
     // 2. Cria o entregador como pendente (só o admin aprova).
     const { error: dErr } = await this.sb.from('drivers').insert({
@@ -732,8 +735,9 @@ class SupabaseRepository implements DataRepository {
     // 3. Envia os documentos para o bucket PRIVADO (pasta = id do usuário).
     const nowIso = new Date().toISOString();
     const documents: ApplicationDocument[] = [];
+    const submission = uuid();
     for (const m of input.documents) {
-      const path = `${userId}/${m.kind}.jpg`;
+      const path = `${userId}/${submission}/${m.kind}.jpg`;
       const { error: upErr } = await this.sb.storage
         .from(DOCS_BUCKET)
         .upload(path, m.blob, { contentType: m.mime, upsert: true });
@@ -756,7 +760,7 @@ class SupabaseRepository implements DataRepository {
         full_name: input.fullName,
         cpf: input.cpf.replace(/\D/g, ''),
         birth_date: input.birthDate,
-        email: input.email,
+        email: data.user.email,
         phone: input.phone,
         address: input.address,
         cnh: input.cnh,
@@ -768,7 +772,10 @@ class SupabaseRepository implements DataRepository {
       .select('*')
       .single();
     if (appErr) {
-      if (appErr.code === '23505' || appErr.message.toLowerCase().includes('duplicate')) {
+      if (appErr.code === '23505' && appErr.message.includes('driver_applications_one_per_user')) {
+        throw new Error('Seu cadastro de entregador já foi enviado. Entre para acompanhar.');
+      }
+      if (appErr.code === '23505') {
         throw new Error('Já existe um cadastro de entregador com este CPF.');
       }
       throw new Error(appErr.message);

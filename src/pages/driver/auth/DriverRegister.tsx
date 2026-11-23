@@ -61,7 +61,7 @@ const STEPS_MOTO = ['Tipo', 'Dados', 'Endereço', 'Selfie', 'CNH', 'Moto', 'Revi
 const CNH_OPTIONS = MOTO_CNH_CATEGORIES.map((category) => ({ value: category, label: category }));
 
 export function DriverRegister() {
-  const { setProfile } = useAuth();
+  const { profile, setProfile } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -72,11 +72,11 @@ export function DriverRegister() {
   const [cepLoading, setCepLoading] = useState(false);
 
   const [f, setF] = useState({
-    fullName: '',
+    fullName: profile?.fullName ?? '',
     cpf: '',
     birthDate: '',
-    email: '',
-    phone: '',
+    email: profile?.email ?? '',
+    phone: profile?.phone ?? '',
     password: '',
     zip: '',
     street: '',
@@ -345,6 +345,7 @@ export function DriverRegister() {
               leftIcon={<Calendar size={16} />}
               inputMode="numeric"
             />
+            <p className="text-sm text-cream-3">Já pede pelo Seu Paulo? Use o mesmo e-mail e a mesma senha da sua conta.</p>
             <Input
               label="E-mail"
               type="email"
@@ -370,7 +371,7 @@ export function DriverRegister() {
               onChange={set('password')}
               error={errors.password}
               showStrength
-              autoComplete="new-password"
+              autoComplete={profile ? 'current-password' : 'new-password'}
             />
           </>
         )}

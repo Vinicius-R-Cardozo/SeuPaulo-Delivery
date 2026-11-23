@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User,
+  Bike,
   Mail,
   Phone,
   MapPin,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/providers/ToastProvider';
+import { hasRole } from '@/utils/roles';
 import { repository } from '@/services';
 import type { Coupon } from '@/types';
 import { Button } from '@/components/ui/Button';
@@ -105,6 +107,8 @@ export function Profile() {
 
       {/* Atalhos */}
       <section className="card mb-5 divide-y divide-ink-3 overflow-hidden">
+        <MenuRow icon={<Bike size={18} />} label={hasRole(profile, 'driver') ? 'Área do entregador' : 'Quero ser entregador'}
+          onClick={() => navigate(hasRole(profile, 'driver') ? '/entregador' : '/entregador/cadastro')} />
         <MenuRow icon={<MapPin size={18} />} label="Meus endereços" onClick={() => navigate('/app/enderecos')} />
         <MenuRow icon={<ReceiptText size={18} />} label="Meus pedidos" onClick={() => navigate('/app/pedidos')} />
         <MenuRow icon={<TicketPercent size={18} />} label="Cupons" onClick={() => setCouponsOpen(true)} />

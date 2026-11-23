@@ -35,7 +35,7 @@ function apiKeys(variable: 'SUPABASE_PUBLISHABLE_KEYS' | 'SUPABASE_SECRET_KEYS')
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
+    headers: { ...CORS, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   });
 }
 
@@ -109,6 +109,42 @@ Deno.serve(async (req) => {
     const email = String(body.email ?? '').trim().toLowerCase();
     if (!EMAIL_RE.test(email)) return json({ error: 'E-mail inválido.' });
 
+    const publicAuth = createClient(url, callerKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    if (action === 'driver-account') {
+      const password = String(body.password ?? '');
+      if (password.length < 6) return json({ error: 'A senha precisa de ao menos 6 caracteres.' });
+      const { data: status, error: lookupError } = await admin.rpc('auth_user_status', { p_email: email });
+      if (lookupError) return json({ error: 'Serviço de cadastro indisponível.' }, 503);
+      const existing = Array.isArray(status) ? status[0] : status;
+      if (!existing?.id) {
+        const { error } = await admin.auth.admin.createUser({
+          email, password, email_confirm: true,
+          user_metadata: {
+            full_name: String(body.fullName ?? '').trim(),
+            phone: String(body.phone ?? '').trim(),
+            role: 'driver',
+          },
+        });
+        if (error && !['email_exists', 'user_already_exists'].includes(error.code ?? ''))
+          return json({ error: 'Não foi possível iniciar o cadastro de entregador.' });
+      }
+      const { data, error } = await publicAuth.auth.signInWithPassword({ email, password });
+      if (error || !data.session || !data.user.email_confirmed_at)
+        return json({ error: 'Use a senha da sua conta Seu Paulo e confirme o e-mail antes de continuar.' });
+      const [{ data: profile }, { data: verification, error: verificationError }] = await Promise.all([
+        admin.from('profiles').select('role').eq('id', data.user.id).maybeSingle(),
+        admin.from('signup_verifications').select('consumed').eq('user_id', data.user.id).maybeSingle(),
+      ]);
+      if (verificationError || !profile || profile.role === 'admin' || (profile.role === 'customer' && verification?.consumed === false)) {
+        await publicAuth.auth.signOut({ scope: 'local' });
+        return json({ error: 'Esta conta precisa concluir a verificação antes de cadastrar um entregador.' });
+      }
+      return json({ access_token: data.session.access_token, refresh_token: data.session.refresh_token });
+    }
+
     /* ------------------------------ REQUEST ------------------------------ */
     if (action === 'request') {
       const password = String(body.password ?? '');
@@ -123,26 +159,45 @@ Deno.serve(async (req) => {
       }
       const existing = Array.isArray(status) ? status[0] : status;
       if (existing?.id) {
-        return json({ error: 'Já existe uma conta com este e-mail.' });
+        const { data: profile, error: profileError } = await admin.from('profiles')
+          .select('role, customer_enabled').eq('id', existing.id).maybeSingle();
+        if (profileError) return json({ error: 'Serviço de cadastro indisponível.' }, 503);
+        if (profile?.role !== 'driver' || profile.customer_enabled) {
+          return json({ error: 'Já existe uma conta com este e-mail.' });
+        }
+        const { data, error } = await publicAuth.auth.signInWithPassword({ email, password });
+        if (error || data.user.id !== existing.id) {
+          return json({ error: 'Use a mesma senha da sua conta de entregador.' });
+        }
+        await publicAuth.auth.signOut({ scope: 'local' });
+        const { data: pending, error: pendingError } = await admin.from('signup_verifications')
+          .select('expires_at, consumed').eq('email', email).maybeSingle();
+        if (pendingError) return json({ error: 'Serviço de cadastro indisponível.' }, 503);
+        if (pending && !pending.consumed && Date.parse(pending.expires_at) > Date.now())
+          return json({ ok: true, expiresAt: pending.expires_at });
       }
 
       const code = gen6();
       // Se o provedor rejeitar o envio, o cliente pode tentar de novo sem conta pendente.
       await sendEmail(email, code);
-      const { data: created, error: creationError } = await admin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: false,
-        user_metadata: { full_name: fullName, phone, role: 'customer' },
-      });
-      if (creationError?.code === 'email_exists' || creationError?.code === 'user_already_exists') {
-        return json({ error: 'Já existe uma conta com este e-mail.' });
+      let userId = existing?.id as string | undefined;
+      let createdAccount = false;
+      if (!userId) {
+        const { data: created, error: creationError } = await admin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: false,
+          user_metadata: { full_name: fullName, phone, role: 'customer' },
+        });
+        if (creationError?.code === 'email_exists' || creationError?.code === 'user_already_exists') {
+          return json({ error: 'Já existe uma conta com este e-mail.' });
+        }
+        if (creationError || !created?.user) {
+          return json({ error: 'Não foi possível iniciar o cadastro. Tente novamente.' });
+        }
+        userId = created.user.id;
+        createdAccount = true;
       }
-      if (creationError || !created?.user) {
-        return json({ error: 'Não foi possível iniciar o cadastro. Tente novamente.' });
-      }
-
-      const userId = created.user.id;
       const expiresAt = new Date(Date.now() + TTL_MS).toISOString();
       const { error: upErr } = await admin.from('signup_verifications').upsert({
         email,
@@ -155,8 +210,10 @@ Deno.serve(async (req) => {
         attempts: 0,
       });
       if (upErr) {
-        const { error: cleanupError } = await admin.auth.admin.deleteUser(userId);
-        if (cleanupError) console.error('Erro ao desfazer cadastro incompleto', cleanupError.code);
+        if (createdAccount) {
+          const { error: cleanupError } = await admin.auth.admin.deleteUser(userId);
+          if (cleanupError) console.error('Erro ao desfazer cadastro incompleto', cleanupError.code);
+        }
         return json({ error: 'Falha ao registrar o código. Tente novamente.' });
       }
       return json({ ok: true, expiresAt });
@@ -240,6 +297,13 @@ Deno.serve(async (req) => {
         await admin.from('signup_verifications').update({ consumed: false })
           .eq('email', email).eq('attempt_id', row.attempt_id);
         return json({ error: 'Não foi possível confirmar a conta. Tente novamente.' });
+      }
+      const { error: accessError } = await admin.from('profiles').update({ customer_enabled: true })
+        .eq('id', row.user_id).eq('role', 'driver');
+      if (accessError) {
+        await admin.from('signup_verifications').update({ consumed: false })
+          .eq('email', email).eq('attempt_id', row.attempt_id);
+        return json({ error: 'Não foi possível habilitar o perfil de cliente. Tente novamente.' });
       }
       return json({ ok: true });
     }

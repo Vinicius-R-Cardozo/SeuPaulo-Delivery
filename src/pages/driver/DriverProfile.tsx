@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { hasRole } from '@/utils/roles';
 import { useNavigate } from 'react-router-dom';
 import { User, Phone, Bike, LogOut, Save, Star, Package } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -106,6 +107,11 @@ export function DriverProfile() {
           </div>
         </section>
       )}
+
+      <Button fullWidth variant="ghost" className="mb-5"
+        onClick={() => navigate(hasRole(profile, 'customer') ? '/app' : '/cadastro')}>
+        {hasRole(profile, 'customer') ? 'Área do cliente' : 'Ativar perfil de cliente'}
+      </Button>
 
       {/* Dados pessoais */}
       <section className="card mb-5 space-y-4 p-5">

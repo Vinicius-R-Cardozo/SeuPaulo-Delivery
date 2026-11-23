@@ -5,6 +5,7 @@ import { AuthShell } from '@/components/layout/AuthShell';
 import { Input } from '@/components/ui/Input';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
 import { repository } from '@/services';
 import { useToast } from '@/providers/ToastProvider';
 import { formatPhone } from '@/utils/format';
@@ -16,10 +17,11 @@ import {
 } from '@/utils/validation';
 
 export function CustomerRegister() {
+  const { profile } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ fullName: '', email: '', phone: '', password: '' });
+  const [form, setForm] = useState({ fullName: profile?.fullName ?? '', email: profile?.email ?? '', phone: profile?.phone ?? '', password: '' });
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(false);
 
@@ -69,6 +71,7 @@ export function CustomerRegister() {
         </>
       }
     >
+      <p className="mb-4 text-sm text-cream-3">Já entrega pelo Seu Paulo? Use o mesmo e-mail e a mesma senha para ativar seu perfil de cliente.</p>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Input
           label="Nome completo"

@@ -326,7 +326,7 @@ class SupabaseRepository implements DataRepository {
     const { data, error } = await this.sb
       .from('profiles')
       .select('*')
-      .eq('role', 'customer')
+      .or('role.eq.customer,and(role.eq.driver,customer_enabled.eq.true)')
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     return data.map(toProfile);
