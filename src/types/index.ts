@@ -156,6 +156,7 @@ export interface OrderStatusEvent {
   status: OrderStatus;
   at: string;
   note?: string;
+  cancelledBy?: 'store';
 }
 
 export interface LatLng {

@@ -66,6 +66,7 @@ export function OrderTracking() {
       : `Previsão de entrega ~${estimatedMinutes} min`;
   const currentStep = ORDER_STATUS_META[order.status].step;
   const cancelled = order.status === 'cancelled';
+  const cancellation = cancelled ? order.statusHistory.at(-1) : undefined;
 
   const copyCode = () => {
     if (!deliveryCode) return;
@@ -192,8 +193,13 @@ export function OrderTracking() {
       <div className="mx-4 mb-4 card p-5">
         <h2 className="display mb-4 text-base text-cream">Acompanhe seu pedido</h2>
         {cancelled ? (
-          <div className="flex items-center gap-3 rounded-lg bg-danger/10 p-3 text-sm text-danger">
-            <span>⚫</span> Este pedido foi cancelado.
+          <div role="status" className="rounded-lg bg-danger/10 p-3 text-sm">
+            <p className="font-semibold text-danger">
+              {cancellation?.cancelledBy === 'store' ? 'A loja cancelou seu pedido.' : 'Este pedido foi cancelado.'}
+            </p>
+            {cancellation?.cancelledBy === 'store' && cancellation.note && (
+              <p className="mt-1 break-words text-cream">{cancellation.note}</p>
+            )}
           </div>
         ) : (
           <ol className="relative space-y-5">

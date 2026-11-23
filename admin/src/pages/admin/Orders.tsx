@@ -5,7 +5,7 @@ import { repository } from '@/services';
 import { useToast } from '@/providers/ToastProvider';
 import type { Driver, Order, OrderStatus, Profile } from '@/types';
 import { Button } from '@/components/ui/Button';
-import { ConfirmDialog } from '@/components/ui/Modal';
+import { Modal } from '@/components/ui/Modal';
 import { PaymentStatusBadge } from '@/components/ui/StatusBadge';
 import { formatBRL, formatDateTime } from '@/utils/format';
 import { nextStatus, ORDER_STATUS_META } from '@/utils/status';
@@ -38,7 +38,8 @@ export function AdminOrders() {
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [cancelId, setCancelId] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Pick<Order, 'id' | 'code'> | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [courier, setCourier] = useState<{id: string; driver: Driver | null; profile: Profile | null} | null>(null);
   const newCount = orders.filter(order => order.status === 'received').length;
@@ -73,14 +74,20 @@ export function AdminOrders() {
     finally { setBusy(null); }
   };
 
+  const requestCancellation = (order: Order) => {
+    setCancelTarget({ id: order.id, code: order.code });
+    setCancelReason('');
+  };
+
   const cancel = async () => {
-    if (!cancelId || busy) return;
-    setBusy(cancelId);
+    const reason = cancelReason.trim();
+    if (!cancelTarget || !reason || busy) return;
+    setBusy(cancelTarget.id);
     try {
-      await repository.cancelOrder(cancelId, 'Cancelado pela administração');
-      setSelectedId(cancelId);
+      await repository.cancelOrder(cancelTarget.id, reason);
+      setSelectedId(cancelTarget.id);
       setHistory(true);
-      setCancelId(null);
+      setCancelTarget(null);
     } catch (err) { toast.error((err as Error).message); }
     finally { setBusy(null); }
   };
@@ -151,6 +158,10 @@ export function AdminOrders() {
                           disabled={busy !== null && busy !== order.id} loading={busy === order.id} onClick={() => void advance(order)}>
                           {labels[next] ?? ORDER_STATUS_META[next].label}
                         </Button>}
+                        {order.status === 'confirmed' && (
+                          <Button variant="ghost" size="sm" fullWidth className="mt-2" disabled={busy !== null}
+                            onClick={() => requestCancellation(order)}>Cancelar pedido</Button>
+                        )}
                       </article>
                     );
                   })}
@@ -159,11 +170,31 @@ export function AdminOrders() {
             ))}
           </div>
           {selected && <OrderDetails key={selected.id} order={selected} courier={courier?.id === driverId ? courier : null}
-            busy={busy} advance={advance} cancel={() => setCancelId(selected.id)} />}
+            busy={busy} advance={advance} cancel={() => requestCancellation(selected)} />}
         </div>
       )}
-      <ConfirmDialog open={cancelId !== null} onClose={() => setCancelId(null)} onConfirm={cancel}
-        title="Cancelar pedido" message="Tem certeza de que deseja cancelar este pedido?" confirmLabel="Cancelar pedido" danger loading={busy !== null} />
+      <Modal
+        open={cancelTarget !== null}
+        onClose={() => { if (!busy) setCancelTarget(null); }}
+        title={`Cancelar pedido ${cancelTarget?.code ?? ''}`}
+        footer={
+          <div className="flex gap-3">
+            <Button variant="ghost" fullWidth disabled={busy !== null} onClick={() => setCancelTarget(null)}>
+              Não
+            </Button>
+            <Button variant="danger" fullWidth loading={busy !== null} disabled={!cancelReason.trim()} onClick={cancel}>
+              Sim, cancelar
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-cream-3">Deseja cancelar este pedido? O cliente receberá o motivo no app.</p>
+        <label className="mt-4 block">
+          <span className="label">Motivo do cancelamento</span>
+          <textarea className="input min-h-20 resize-y" value={cancelReason} maxLength={240} disabled={busy !== null}
+            onChange={event => setCancelReason(event.target.value)} placeholder="Ex.: O prato escolhido acabou." />
+        </label>
+      </Modal>
     </div>
   );
 }
