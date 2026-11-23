@@ -5,7 +5,6 @@ import { AuthShell } from '@/components/layout/AuthShell';
 import { Input } from '@/components/ui/Input';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { Button } from '@/components/ui/Button';
-import { DemoAccounts } from '@/components/layout/DemoAccounts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/providers/ToastProvider';
 import { validateEmail } from '@/utils/validation';
@@ -35,11 +34,6 @@ export function CustomerLogin() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillDemo = (e: string, p: string) => {
-    setEmail(e);
-    setPassword(p);
   };
 
   return (
@@ -77,8 +71,6 @@ export function CustomerLogin() {
           Entrar
         </Button>
       </form>
-
-      <DemoAccounts onPick={fillDemo} highlight="customer" />
 
       <div className="mt-6 flex items-center justify-center gap-4 text-xs text-cream-3">
         <Link to="/entregador/login" className="hover:text-cream">

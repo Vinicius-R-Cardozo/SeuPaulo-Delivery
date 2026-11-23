@@ -54,21 +54,12 @@ const STATUS_META: Record<DriverApplicationStatus, { label: string; cls: string 
   needs_resubmission: { label: '🔁 Reenvio solicitado', cls: 'bg-amber/15 text-amber' },
 };
 
-const REASON_PRESETS = [
-  'Documento ilegível',
-  'Selfie não corresponde ao documento',
-  'CNH vencida',
-  'Dados divergentes',
-  'Documento não pôde ser validado',
-  'Necessária nova captura',
-];
-
 const DOC_LABEL: Record<ApplicationDocument['kind'], string> = {
   selfie: 'Selfie',
   id_document: 'Documento de identidade',
   cnh_front: 'CNH (frente)',
   cnh_back: 'CNH (verso)',
-  vehicle_doc: 'Documento do veículo',
+  vehicle_doc: 'CRLV-e do veículo',
   vehicle_photo: 'Foto da moto',
   plate_photo: 'Foto da placa',
   bike_photo: 'Foto da bicicleta',
@@ -254,6 +245,16 @@ function ApplicationDetail({
   const [reasonModal, setReasonModal] = useState<null | 'reject' | 'request_resubmission'>(null);
   const [reason, setReason] = useState('');
   const [docUrls, setDocUrls] = useState<Record<string, string>>({});
+  const hasDocuments = app.documents.length > 0;
+  const hasSelfie = app.documents.some((doc) => doc.kind === 'selfie');
+  const hasIdentityDocument = app.documents.some((doc) => doc.kind === 'cnh_front' || doc.kind === 'id_document');
+  const reasonPresets = [
+    ...(hasDocuments ? ['Documento ilegível'] : []),
+    ...(hasSelfie && hasIdentityDocument ? ['Selfie não corresponde ao documento'] : []),
+    ...(app.cnh ? ['CNH vencida'] : []),
+    'Dados divergentes',
+    ...(hasDocuments ? ['Documento não pôde ser validado', 'Necessária nova captura'] : []),
+  ];
 
   useEffect(() => {
     let active = true;
@@ -388,7 +389,7 @@ function ApplicationDetail({
 
           {/* Verificações que dependem de fornecedor externo (como no Lux v1) */}
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            <OfficialRow label="Semelhança selfie × documento" value="Não configurado" />
+            {hasSelfie && hasIdentityDocument && <OfficialRow label="Semelhança selfie × documento" value="Não configurado" />}
             <OfficialRow label="Antecedentes / base oficial" value="Não consultado" />
             <OfficialRow label="CPF único no sistema" value="Sim" ok />
           </div>
@@ -437,7 +438,7 @@ function ApplicationDetail({
           <h2 className="mb-3 text-sm font-semibold text-cream">Dados informados</h2>
           <Row k="Nome" v={app.fullName} />
           <Row k="CPF" v={formatCPF(app.cpf)} />
-          <Row k="RG" v={app.rg} />
+          {app.rg && <Row k="RG" v={app.rg} />}
           <Row k="Nascimento" v={app.birthDate} />
           <Row k="E-mail" v={app.email} />
           <Row k="Telefone" v={app.phone} />
@@ -449,14 +450,18 @@ function ApplicationDetail({
 
         <section className="card p-5">
           <h2 className="mb-3 text-sm font-semibold text-cream">
-            {app.vehicle === 'moto' ? 'CNH e veículo' : 'Bicicleta'}
+            {app.vehicle === 'moto' ? 'Moto' : 'Bicicleta'}
           </h2>
           {app.vehicle === 'moto' ? (
             <>
-              <Row k="CNH" v={app.cnh?.number ?? '—'} />
-              <Row k="Categoria" v={app.cnh?.category ?? '—'} />
-              <Row k="Validade" v={app.cnh?.expiresAt ?? '—'} />
-              <div className="my-2 border-t border-ink-3" />
+              {app.cnh && (
+                <>
+                  <Row k="CNH" v={app.cnh.number} />
+                  <Row k="Categoria" v={app.cnh.category} />
+                  <Row k="Validade" v={app.cnh.expiresAt} />
+                  <div className="my-2 border-t border-ink-3" />
+                </>
+              )}
               <Row k="Moto" v={`${app.moto?.brand ?? ''} ${app.moto?.model ?? ''} ${app.moto?.year ?? ''}`} />
               <Row k="Cor" v={app.moto?.color ?? '—'} />
               <Row k="Placa" v={app.moto?.plate ?? '—'} />
@@ -470,9 +475,11 @@ function ApplicationDetail({
               <Row k="Cor" v={app.bike?.color ?? '—'} />
             </>
           )}
-          <p className="mt-3 flex items-center gap-1.5 text-[11px] text-cream-3">
-            <CircleAlert size={12} /> OCR não configurado — confira os dados contra os documentos.
-          </p>
+          {hasDocuments && (
+            <p className="mt-3 flex items-center gap-1.5 text-[11px] text-cream-3">
+              <CircleAlert size={12} /> OCR não configurado — confira os dados contra os documentos.
+            </p>
+          )}
         </section>
       </div>
 
@@ -481,7 +488,7 @@ function ApplicationDetail({
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-cream">
           <FileText size={16} /> Documentos enviados
         </h2>
-        {app.documents.length === 0 ? (
+        {!hasDocuments ? (
           <p className="text-sm text-cream-3">Nenhum arquivo anexado.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -597,7 +604,7 @@ function ApplicationDetail({
       >
         <p className="mb-3 text-sm text-cream-3">Informe o motivo — o entregador verá esta mensagem.</p>
         <div className="mb-3 flex flex-wrap gap-2">
-          {REASON_PRESETS.map((p) => (
+          {reasonPresets.map((p) => (
             <button
               key={p}
               onClick={() => setReason(p)}

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { CartItem, Coupon, Product, SelectedAddon } from '@/types';
+import { supabaseUrl } from '@/services/supabase/client';
 import { uid } from '@/utils/id';
 
 interface AddToCartArgs {
@@ -33,7 +34,7 @@ interface CartContextValue {
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
-const STORAGE_KEY = 'spd_cart_v1';
+const STORAGE_KEY = `spd_cart_v2:${supabaseUrl ?? ''}`;
 
 function computeUnitPrice(product: Product, addons: SelectedAddon[]): number {
   return product.price + addons.reduce((sum, a) => sum + a.price, 0);

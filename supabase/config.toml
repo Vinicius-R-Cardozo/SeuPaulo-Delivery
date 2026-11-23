@@ -1,0 +1,9 @@
+project_id = "seu-paulo-delivery"
+
+[functions.signup-code]
+# O cadastro antecede a sessão. A função valida a chave pública no cabeçalho apikey.
+verify_jwt = false
+
+[functions.order-live]
+# Invocação interna autenticada pelo segredo compartilhado com o Vault.
+verify_jwt = false

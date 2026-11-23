@@ -34,6 +34,8 @@ export const ORDER_STATUS_META: Record<OrderStatus, StatusMeta> = {
     className: 'text-info bg-info/10',
     step: 3,
   },
+  accepted: { label: 'Entregador a caminho do restaurante', emoji: '🛵', className: 'text-info bg-info/10', step: 2 },
+  at_restaurant: { label: 'Entregador no restaurante', emoji: '🏪', className: 'text-info bg-info/10', step: 3 },
   on_the_way: {
     label: 'Saiu para entrega',
     emoji: '🛵',
@@ -71,14 +73,14 @@ export const ORDER_FLOW: OrderStatus[] = [
   'delivered',
 ];
 
-/** Esteira do ADMIN: avança até "saiu para entrega". As etapas seguintes
- * (chegou / entregue) são do entregador — entregue só via código do cliente. */
-const ADMIN_FLOW: OrderStatus[] = ['received', 'confirmed', 'preparing', 'ready', 'on_the_way'];
-
-export function nextStatus(status: OrderStatus): OrderStatus | null {
-  const i = ADMIN_FLOW.indexOf(status);
-  if (i < 0 || i >= ADMIN_FLOW.length - 1) return null;
-  return ADMIN_FLOW[i + 1];
+export function nextStatus(status: OrderStatus, fulfillment: 'delivery' | 'pickup'): OrderStatus | null {
+  if (status === 'received') return 'confirmed';
+  if (fulfillment === 'pickup') {
+    if (status === 'confirmed') return 'preparing';
+    if (status === 'preparing') return 'ready';
+    if (status === 'ready') return 'delivered';
+  }
+  return null;
 }
 
 export const DRIVER_STATUS_META: Record<DriverStatus, StatusMeta> = {

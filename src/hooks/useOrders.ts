@@ -10,6 +10,7 @@ export function useOrder(orderId: string | undefined) {
   useEffect(() => {
     if (!orderId) return;
     setLoading(true);
+    setOrder(null);
     const unsub = repository.subscribeOrder(orderId, (o) => {
       setOrder(o);
       setLoading(false);

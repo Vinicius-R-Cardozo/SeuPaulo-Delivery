@@ -1,5 +1,6 @@
 import { Link, Navigate } from 'react-router-dom';
-import { ShoppingBag, Bike, ArrowRight, MapPin, Clock, Star } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { ShoppingBag, Bike, ArrowRight, ChevronRight, MapPin, Clock } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +14,8 @@ export function Landing() {
     const home = { customer: '/app', driver: '/entregador', admin: '/admin' }[profile.role];
     return <Navigate to={home} replace />;
   }
+
+  if (Capacitor.isNativePlatform()) return <AppWelcome />;
 
   return (
     <div className="min-h-screen bg-ink">
@@ -63,9 +66,6 @@ export function Landing() {
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-cream/60">
               <span className="inline-flex items-center gap-1.5">
-                <Star size={15} className="text-amber" /> 4,9 de avaliação
-              </span>
-              <span className="inline-flex items-center gap-1.5">
                 <Clock size={15} className="text-amber" /> Entrega em ~{RESTAURANT.avgPrepMinutes} min
               </span>
               <span className="inline-flex items-center gap-1.5">
@@ -109,6 +109,51 @@ export function Landing() {
         <p className="mt-1">{RESTAURANT.phoneDisplay} · {RESTAURANT.instagramHandle}</p>
       </footer>
     </div>
+  );
+}
+
+function AppWelcome() {
+  return (
+    <main className="app-welcome bg-ink">
+      <div className="app-welcome-photo">
+        <img
+          src="/hero.jpg"
+          alt=""
+          fetchPriority="high"
+          className="absolute inset-0 h-full w-full object-cover object-[64%_center]"
+        />
+        <div className="relative z-10 px-6 pt-5">
+          <Logo size="md" light withText={false} />
+        </div>
+      </div>
+
+      <div className="app-welcome-content mx-auto w-full max-w-md px-6 pb-6 pt-1">
+        <h1 className="text-[clamp(2.125rem,9.75vw,2.75rem)] leading-[1.06] font-bold tracking-tight text-cream">
+          Do boteco<br />pra sua mesa.
+        </h1>
+        <p className="mt-3 max-w-[31ch] text-[15px] leading-relaxed text-cream-3">
+          Peça seus favoritos do Seu Paulo e acompanhe a entrega pelo app.
+        </p>
+
+        <div className="mt-7 grid gap-2.5">
+          <Link to="/login" className="btn btn-primary min-h-13 w-full text-base">
+            Entrar como cliente
+          </Link>
+          <Link to="/cadastro" className="btn btn-ghost min-h-12 w-full">
+            Criar conta
+          </Link>
+        </div>
+
+        <Link
+          to="/entregador/login"
+          className="mt-5 flex min-h-12 items-center gap-3 border-t border-ink-4 pt-2 text-sm font-semibold text-cream"
+        >
+          <Bike size={20} className="text-amber" aria-hidden="true" />
+          Área do entregador
+          <ChevronRight size={18} className="ml-auto text-cream-3" aria-hidden="true" />
+        </Link>
+      </div>
+    </main>
   );
 }
 

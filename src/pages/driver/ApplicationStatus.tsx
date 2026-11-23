@@ -25,7 +25,7 @@ const VIEW: Record<
   manual_review: {
     emoji: '🟠',
     title: 'Seu cadastro está em análise',
-    desc: 'Um responsável está conferindo seus dados e documentos. Você será avisado assim que houver uma resposta.',
+    desc: 'Um responsável está conferindo seu cadastro. Você será avisado assim que houver uma resposta.',
     tone: 'wait',
   },
   approved: {

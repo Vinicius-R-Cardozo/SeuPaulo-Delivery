@@ -2,8 +2,7 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import type { LatLng } from '@/types';
 import { customerIcon } from './mapIcons';
-
-const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+import { addMapTiles } from './mapTiles';
 
 /**
  * Mapa interativo para posicionar/ajustar o marcador de entrega.
@@ -27,11 +26,12 @@ export function AddressPickerMap({
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current, { center: [value.lat, value.lng], zoom: 16 });
-    L.tileLayer(TILE_URL, { attribution: '&copy; OpenStreetMap', maxZoom: 19 }).addTo(map);
+    const map = L.map(containerRef.current, { center: [value.lat, value.lng], zoom: 16, zoomControl: false });
+    addMapTiles(map);
     const marker = L.marker([value.lat, value.lng], {
       icon: customerIcon(),
       draggable: true,
+      title: 'Endereço de entrega',
     }).addTo(map);
     marker.on('dragend', () => {
       const { lat, lng } = marker.getLatLng();
@@ -61,5 +61,5 @@ export function AddressPickerMap({
     map.setView([value.lat, value.lng], map.getZoom());
   }, [value.lat, value.lng]);
 
-  return <div ref={containerRef} className={className} />;
+  return <div ref={containerRef} className={`seu-paulo-map ${className}`} aria-label="Ajustar localização do endereço" />;
 }

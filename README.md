@@ -2,7 +2,7 @@
 
 Aplicativo completo de delivery do **Seu Paulo Buteco** (Angola — Betim/MG).
 Três ambientes em um só projeto: **Cliente**, **Entregador** e **Painel Administrativo**, com
-cardápio, carrinho, cupons, pagamento, acompanhamento de pedido e **rastreamento ao vivo no mapa**.
+cardápio, carrinho, cupons, pagamento, acompanhamento de pedido e **acompanhamento do pedido no mapa**.
 
 > Identidade visual extraída da própria marca: vermelho `#A42129`, madeira de boteco, creme de
 > papel kraft e o âmbar do chope. Nada de azul genérico de delivery.
@@ -15,17 +15,14 @@ cardápio, carrinho, cupons, pagamento, acompanhamento de pedido e **rastreament
   recuperação e redefinição de senha, e validações completas.
 - **Cardápio real** do buteco com categorias, busca, personalização de produtos (adicionais,
   remoções, observações) e **preço que atualiza sozinho**.
-- **Carrinho + Checkout** com entrega/retirada, endereços salvos, cupons, PIX/cartão/dinheiro
+- **Carrinho + Checkout** com entrega/retirada, endereços salvos, cupons, cartão/dinheiro
   (com troco) e cálculo de frete por distância.
 - **Localização de verdade**: detectar posição atual, buscar endereço, ajustar o pino no mapa,
   salvar múltiplos endereços e definir o principal.
-- **Acompanhamento do pedido** com timeline de status e **mapa ao vivo** (restaurante → cliente →
-  entregador) com ETA — inspirado na tela de corrida ao vivo da referência LuxDrive, adaptada
-  para delivery.
+- **Acompanhamento do pedido** com timeline de status e mapa com o restaurante, o endereço de entrega e a posição do entregador.
 - **App do entregador**: online/offline, pedidos disponíveis, aceitar, fluxo de entrega
   (ir ao restaurante → retirar → entregar → confirmar), histórico e ganhos (hoje/semana/mês).
-- **Painel admin**: dashboard com KPIs e gráfico, gestão de pedidos (avançar status, atribuir
-  entregador mais próximo, cancelar), CRUD de cardápio, aprovação de entregadores e lista de
+- **Painel admin**: dashboard com KPIs e gráfico, confirmação e cancelamento de pedidos, acompanhamento das entregas, CRUD de cardápio, aprovação de entregadores e lista de
   clientes.
 - **Notificações** in-app para cliente, entregador e admin.
 
@@ -41,20 +38,10 @@ cardápio, carrinho, cupons, pagamento, acompanhamento de pedido e **rastreament
 
 ---
 
-## 🔌 Dois backends, uma interface
+## 🔌 Supabase
 
-A UI conversa apenas com um contrato único (`DataRepository`, em `src/services/types.ts`).
-Existem duas implementações, escolhidas por variável de ambiente:
-
-| Backend | Quando | Precisa de chave? |
-| --- | --- | --- |
-| **Mock** (`localStorage`) | Demonstração / desenvolvimento | ❌ Funciona de imediato |
-| **Supabase** | Produção | ✅ URL + anon key |
-
-Assim o app **roda 100% sem configuração** para demonstração e migra para o Supabase apenas
-trocando o `.env` — sem tocar em nenhum componente.
-
----
+O app do cliente/entregador e o painel usam o Supabase para catálogo,
+autenticação, endereços, pedidos e entregas.
 
 ## 🚀 1. Como instalar
 
@@ -62,26 +49,10 @@ trocando o `.env` — sem tocar em nenhum componente.
 npm install
 ```
 
-## ▶️ 2. Como rodar (modo demonstração, sem Supabase)
+## ▶️ 2. Como rodar
 
-```bash
-npm run dev
-```
-
-Abra `http://localhost:5173`. O backend mock já vem com dados de exemplo.
-
-**Contas de demonstração** (senha `Senha123` para todas):
-
-| Papel | E-mail |
-| --- | --- |
-| Cliente | `cliente@seupaulo.com` |
-| Entregador (aprovado) | `entregador@seupaulo.com` |
-| Entregador (em análise) | `entregador2@seupaulo.com` |
-| Administrador | `admin@seupaulo.com` |
-
-> Dica de demonstração do fluxo completo: abra o **cliente** em uma janela e o **admin** em uma
-> aba anônima. Faça um pedido no cliente; no admin, confirme → prepare → pronto → atribua um
-> entregador → “saiu para entrega”. O mapa do cliente passa a mostrar o entregador se movendo.
+Preencha as variáveis a seguir e rode `npm run dev`. O app abre em
+`http://localhost:5173`. Use uma conta cadastrada no projeto configurado.
 
 ## ⚙️ 3. Variáveis de ambiente
 
@@ -92,14 +63,15 @@ cp .env.example .env
 ```
 
 ```env
-VITE_USE_SUPABASE=false                 # true para usar o Supabase
-VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=sua-anon-key-publica
+VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-> 🔒 A `anon key` é pública por design (protegida por RLS). As chaves **secretas**
-> (`service_role`, tokens de gateway de pagamento) **nunca** entram no frontend nem neste
-> repositório — vivem só no backend (Edge Functions / servidor).
+Copie a URL e a chave **Publishable** do menu **Connect** do projeto.
+A variável `VITE_SUPABASE_ANON_KEY` continua disponível para instalações antigas.
+Se ambas estiverem preenchidas, `VITE_SUPABASE_PUBLISHABLE_KEY` tem prioridade.
+
+Mantenha `sb_secret_...`, `service_role` e tokens de pagamento nas variáveis do servidor.
 
 ## 🗄️ 4. Como configurar o Supabase
 
@@ -108,14 +80,34 @@ VITE_SUPABASE_ANON_KEY=sua-anon-key-publica
    1. `0001_init.sql` — tabelas, índices, triggers e Realtime.
    2. `0002_rls.sql` — Row Level Security (segurança por papel).
    3. `0003_seed.sql` — cardápio real + cupons (gerado por `npm run gen:seed`).
-3. Em **Project Settings → API**, copie a `Project URL` e a `anon public key` para o `.env`.
-4. Defina `VITE_USE_SUPABASE=true` e rode `npm run dev`.
+   4. `0005_delivery_codes.sql`, `0006_driver_applications.sql`, `0007_driver_auto_approval.sql` e `0008_signup_verifications.sql`.
+   5. `20261123163221_delivery_trip_tracking.sql` — etapas da entrega e localização ao vivo.
+3. Em **Connect**, copie a `Project URL` e a `Publishable key` para o `.env`.
+4. Rode `npm run dev`.
 
 O cadastro cria o usuário no **Supabase Auth**; um gatilho (`handle_new_user`) cria
 automaticamente a linha em `profiles` com o papel escolhido.
 
 > Para criar o **admin**: cadastre-se normalmente e, no SQL Editor, rode
 > `update public.profiles set role='admin' where email='seu@email.com';`
+
+### Edge Function de cadastro
+
+Com as migrações numeradas aplicadas até `0008_signup_verifications.sql`, publique
+a função `signup-code` para o app conseguir solicitar e verificar códigos de e-mail.
+Autentique o domínio e cadastre o remetente no Brevo. Em **Edge Functions → Secrets**
+do Supabase, configure `BREVO_API_KEY` e use `nao-responda@seupaulobuteco.com.br`
+como valor de `BREVO_FROM_EMAIL`.
+
+```bash
+supabase functions deploy signup-code --project-ref SEU_PROJETO
+```
+
+O Supabase disponibiliza `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEYS` e
+`SUPABASE_SECRET_KEYS` no ambiente da função. Ela usa a chave secreta
+`default` e mantém compatibilidade com `SUPABASE_SERVICE_ROLE_KEY`.
+A função confere a chave pública enviada em `apikey`, pois o cadastro começa
+antes de o cliente ter uma sessão.
 
 ## 🖥️ Painel administrativo (site separado — Vercel)
 
@@ -130,82 +122,21 @@ npm install
 # crie admin/.env.local com as chaves do Supabase (ver admin/.env.example)
 npm run dev        # http://localhost:5180
 ```
-Entre com uma conta de papel `admin` (ex.: `admin@seupaulo.com`).
+Entre com uma conta de papel `admin` do projeto configurado.
 
 ### Deploy no Vercel
 1. Importe o repositório no Vercel (**Add New → Project**).
 2. Em **Root Directory**, selecione a pasta **`admin`**.
 3. Framework: **Vite** (build `npm run build`, output `dist` — detectado automaticamente).
 4. Em **Environment Variables**, adicione:
-   - `VITE_USE_SUPABASE = true`
    - `VITE_SUPABASE_URL = https://SEU-PROJETO.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY = sua-anon-ou-publishable-key`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY = sb_publishable_...`
 5. **Deploy**. O `admin/vercel.json` já cuida do roteamento SPA.
 
-## 🐍 Backend FastAPI + ngrok
+## 🐍 Protótipo FastAPI
 
-Além do backend mock e do Supabase, o projeto traz uma **API própria em FastAPI +
-uvicorn** (pasta `backend/`), no mesmo estilo da referência LuxDrive (app + routers
-+ schemas). Ela cobre todo o domínio (auth com senha em hash, cardápio, endereços,
-cupons, pedidos com **rastreamento ao vivo**, entregadores e notificações), com
-autorização por papel no servidor. Persistência em arquivo JSON (sem banco externo);
-em produção troca-se por Postgres/Supabase mantendo a forma dos dados.
-
-### Rodar o backend
-
-```bash
-cd backend
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# Linux/macOS:
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-```
-
-Docs interativas em `http://localhost:8000/docs`. Contas de teste iguais às do app
-(senha `Senha123`). Para regenerar o seed do cardápio a partir do front:
-`npm run gen:seed:backend` (na raiz).
-
-### Apontar o app para o backend
-
-No `.env` (ou `.env.local`) do frontend:
-
-```env
-VITE_API_URL=http://localhost:8000
-```
-
-Com `VITE_API_URL` definido, o app usa a API FastAPI (tem prioridade sobre o
-Supabase). Sem ela, cai no Supabase (se configurado) ou no mock.
-
-### Expor via ngrok (para o app Android / celular)
-
-O celular/emulador não enxerga o `localhost` do seu PC. O **ngrok** cria uma URL
-pública para o backend:
-
-```bash
-# 1. (uma vez) autentique o ngrok com SEU token de https://dashboard.ngrok.com
-ngrok config add-authtoken SEU_TOKEN
-
-# 2. com o backend rodando na 8000, abra o túnel
-ngrok http 8000
-```
-
-O ngrok mostra uma URL `https://xxxx.ngrok-free.app`. Coloque-a no `.env`:
-
-```env
-VITE_API_URL=https://xxxx.ngrok-free.app
-```
-
-Depois **reconstrua** e sincronize o app Android (a URL é embutida no build):
-
-```bash
-npm run android:sync    # build + cap sync android
-```
-
-> A URL gratuita do ngrok muda a cada execução — ao reabrir o túnel, atualize o
-> `VITE_API_URL` e rode `npm run android:sync` de novo.
+A pasta `backend/` contém um protótipo independente com persistência em JSON.
+O app e o painel usam o Supabase configurado nas respectivas variáveis de ambiente.
 
 ## 📱 App Android (Android Studio)
 
@@ -242,6 +173,14 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 Sempre que mudar o código web, rode `npm run build && npx cap sync android` antes
 de recompilar o app.
 
+### Entregas e localização em segundo plano
+
+Depois de `0008_signup_verifications.sql`, aplique `supabase/migrations/20261123163221_delivery_trip_tracking.sql` junto com a atualização do painel e dos apps. Versões anteriores escrevem diretamente em `orders`. A nova versão usa `advance_order` e `confirm_delivery`.
+
+O restaurante confirma o pedido no painel. Um entregador aprovado e online aceita no app, registra a chegada ao restaurante e toca em **Retirei o pedido · Iniciar entrega**. O cliente acompanha no mapa a última posição recebida e seu horário. Ao chegar, o entregador toca em **Cheguei ao cliente** e informa o código de seis dígitos para concluir.
+
+O Android inicia um serviço de localização com notificação durante o trajeto. O iOS usa Core Location com o modo de localização em segundo plano. Para compilar para iPhone, em um Mac com Xcode e CocoaPods, rode `npm run build`, `npx cap sync ios` e `npx cap open ios`. O navegador usa o GPS enquanto a página está ativa. Após forçar a parada do aplicativo, reabra-o para retomar uma entrega em andamento.
+
 ## 🗺️ 5. Como configurar mapas/localização
 
 Os mapas usam **Leaflet + OpenStreetMap**, que **não exigem chave de API** — funciona out of the
@@ -266,7 +205,7 @@ src/
 ├── contexts/       → AuthContext, CartContext
 ├── providers/      → AppProviders, ToastProvider
 ├── hooks/          → useMenu, useOrders (realtime), useDriver, useGeolocation
-├── services/       → contrato DataRepository + backends mock e supabase + pagamentos
+├── services/       → contrato DataRepository e integração com o Supabase
 ├── pages/
 │   ├── auth/       → login, cadastro, recuperar/redefinir senha (cliente)
 │   ├── customer/   → home, cardápio, produto, carrinho, checkout, pedidos, tracking, endereços, perfil
@@ -298,15 +237,12 @@ confiança** — toda regra vive no banco.
 
 ---
 
-## 💳 Sistema de pagamentos
+## 💳 Pagamento no recebimento
 
-A camada de pagamentos é **isolada** (`src/services/payments.ts`) e define status
-`pending / approved / failed / refunded`. O provedor incluído é apenas de **demonstração** —
-ele **não cobra de verdade**. Em produção, a cobrança (PIX/cartão) deve ser feita por um gateway
-no **backend** (Mercado Pago, Stripe, Asaas) e confirmada por **webhook**, que atualiza
-`orders.payment_status`. Nunca processe pagamento como “seguro” no frontend.
-
----
+O checkout oferece dinheiro ou cartão no recebimento. O pedido começa com
+pagamento pendente. No fluxo de entrega, a conclusão pelo entregador
+registra a confirmação no pedido. O fluxo de PIX online requer um gateway
+de pagamento no backend.
 
 ## 📜 Scripts
 

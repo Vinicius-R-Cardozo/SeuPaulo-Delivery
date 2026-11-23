@@ -35,15 +35,14 @@ export interface DriverApplicationInput {
   vehicle: DeliveryVehicle;
   fullName: string;
   cpf: string;
-  rg: string;
   birthDate: string;
   email: string;
   phone: string;
   address: ApplicationAddress;
-  cnh?: CnhInfo | null;
+  cnh: CnhInfo | null;
   moto?: MotoInfo | null;
   bike?: BikeInfo | null;
-  /** arquivos capturados (selfie, documentos, fotos do veículo) com o binário */
+  /** Selfie e documentos enviados para conferência. */
   documents: CapturedMedia[];
 }
 
@@ -101,7 +100,7 @@ export interface DataRepository {
   signUp(input: SignUpInput): Promise<AuthSession>;
   signOut(): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
-  resetPassword(email: string, newPassword: string): Promise<void>;
+  resetPassword(newPassword: string): Promise<void>;
   updateProfile(userId: string, patch: Partial<Profile>): Promise<Profile>;
   changePassword(userId: string, current: string, next: string): Promise<void>;
   getProfileById(id: string): Promise<Profile | null>;
@@ -146,13 +145,11 @@ export interface DataRepository {
   /** pedidos prontos e ainda sem entregador atribuído */
   getAvailableDeliveries(): Promise<Order[]>;
   updateOrderStatus(id: string, status: OrderStatus, note?: string): Promise<Order>;
-  assignDriver(orderId: string, driverId: string): Promise<Order>;
   cancelOrder(id: string, reason?: string): Promise<Order>;
   /** Código de entrega do pedido — só o cliente dono consegue ler (RLS). */
   getDeliveryCode(orderId: string): Promise<string | null>;
   /** Confirma a entrega validando o código no backend (não no frontend). */
   confirmDelivery(orderId: string, code: string): Promise<{ ok: boolean; error?: string }>;
-  updateDriverLocation(orderId: string, location: LatLng): Promise<void>;
 
   /* ---- Entregadores ---- */
   getDrivers(): Promise<Driver[]>;
@@ -182,10 +179,7 @@ export interface DataRepository {
   markNotificationRead(id: string): Promise<void>;
 
   /* ---- Realtime ---- */
-  subscribeOrder(orderId: string, cb: (order: Order) => void): Unsubscribe;
+  subscribeOrder(orderId: string, cb: (order: Order | null) => void): Unsubscribe;
   subscribeOrders(cb: (orders: Order[]) => void): Unsubscribe;
   subscribeAvailableDeliveries(cb: (orders: Order[]) => void): Unsubscribe;
-
-  /** Nome legível do backend ativo (para debug/README). */
-  readonly backendName: string;
 }

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, UtensilsCrossed, ReceiptText, User, MapPin, ChevronDown, ShoppingBag } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { followCustomerOrders } from '@/services/orderLive';
 import { useCart } from '@/contexts/CartContext';
 import { repository } from '@/services';
 import type { Address } from '@/types';
@@ -29,10 +31,18 @@ export function CustomerLayout() {
     });
   }, [profile, location.pathname]);
 
-  const hideCartFab = location.pathname.includes('/carrinho') || location.pathname.includes('/checkout');
+  const customerId = profile?.id;
+  useEffect(() => {
+    if (customerId) return followCustomerOrders(customerId, id => navigate('/app/pedido/' + id));
+  }, [customerId, navigate]);
+
+  const hasCheckoutFooter = /^\/app\/(carrinho|checkout)(\/|$)/.test(location.pathname);
+  const hasProductFooter = /^\/app\/produto\//.test(location.pathname);
+  const hideTabBar = Capacitor.isNativePlatform() && (hasCheckoutFooter || hasProductFooter);
+  const hideCartFab = hasCheckoutFooter || hideTabBar;
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-lg flex-col bg-ink">
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col bg-ink">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-ink-3 bg-ink/90 backdrop-blur">
         <div className="flex items-center gap-3 px-4 py-3">
@@ -60,7 +70,7 @@ export function CustomerLayout() {
       </header>
 
       {/* Conteúdo */}
-      <main className="flex-1 pb-24">
+      <main className={cn('flex-1', !hideTabBar && 'pb-24')}>
         <Outlet />
       </main>
 
@@ -82,7 +92,7 @@ export function CustomerLayout() {
       )}
 
       {/* Bottom nav */}
-      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto max-w-lg border-t border-ink-3 bg-ink-2/95 backdrop-blur">
+      {!hideTabBar && <nav aria-label="Navegação do cliente" className="app-tab-bar safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto max-w-lg border-t border-ink-3 bg-ink-2/95 backdrop-blur">
         <div className="grid grid-cols-4">
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink
@@ -101,7 +111,7 @@ export function CustomerLayout() {
             </NavLink>
           ))}
         </div>
-      </nav>
+      </nav>}
     </div>
   );
 }

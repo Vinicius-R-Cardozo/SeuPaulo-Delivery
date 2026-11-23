@@ -137,6 +137,8 @@ export type OrderStatus =
   | 'confirmed' // 🟠 Pedido confirmado
   | 'preparing' // 👨‍🍳 Em preparo
   | 'ready' // 📦 Pronto para entrega
+  | 'accepted'
+  | 'at_restaurant'
   | 'on_the_way' // 🛵 Saiu para entrega
   | 'arrived' // 🛎️ Motorista chegou (aguardando código)
   | 'delivered' // 🟢 Entregue
@@ -180,6 +182,7 @@ export interface Order {
   statusHistory: OrderStatusEvent[];
   driverId: string | null;
   driverLocation: LatLng | null;
+  driverLocationAt: string | null;
   etaMinutes: number | null;
   /** Código de entrega (visível só para o cliente, perto da entrega). */
   deliveryCode?: string | null;
@@ -227,18 +230,18 @@ export type DriverApplicationStatus =
   | 'manual_review' // aguardando revisão humana
   | 'approved' // aprovado
   | 'rejected' // reprovado
-  | 'needs_resubmission'; // precisa reenviar documento/selfie
+  | 'needs_resubmission';
 
-/** Tipos de arquivo que um candidato pode enviar. */
-export type DocumentKind =
+/** Arquivos aceitos em novos cadastros. */
+export type DriverRegistrationDocumentKind =
   | 'selfie'
-  | 'id_document' // RG/identidade
   | 'cnh_front'
   | 'cnh_back'
-  | 'vehicle_doc' // CRLV
-  | 'vehicle_photo'
-  | 'plate_photo'
+  | 'vehicle_doc'
   | 'bike_photo';
+
+/** Inclui tipos de arquivo presentes em candidaturas antigas. */
+export type DocumentKind = DriverRegistrationDocumentKind | 'id_document' | 'vehicle_photo' | 'plate_photo';
 
 /**
  * Arquivo enviado. Guardamos o caminho no bucket PRIVADO (nunca URL pública)

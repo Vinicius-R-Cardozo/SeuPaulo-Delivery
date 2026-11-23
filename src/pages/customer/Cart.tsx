@@ -128,7 +128,7 @@ export function Cart() {
               <Input
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                placeholder="Ex.: BEMVINDO10"
+                placeholder="Código do cupom"
                 error={couponError}
               />
               <Button variant="ghost" onClick={applyCouponCode} loading={couponLoading}>

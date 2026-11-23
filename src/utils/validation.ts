@@ -78,13 +78,6 @@ export function validateCPF(cpf: string): string | null {
   return null;
 }
 
-export function validateRG(rg: string): string | null {
-  const v = rg.replace(/[.\-\s]/g, '');
-  if (!v) return 'Informe seu RG.';
-  if (v.length < 5) return 'RG inválido.';
-  return null;
-}
-
 export function validateCEP(cep: string): string | null {
   const d = cep.replace(/\D/g, '');
   if (!d) return 'Informe o CEP.';
@@ -114,41 +107,36 @@ export function validateBirthDate(value: string): string | null {
   return null;
 }
 
+export const MOTO_CNH_CATEGORIES = ['A', 'AB', 'AC', 'AD', 'AE'];
+
 export function validateCnhNumber(value: string): string | null {
-  const d = value.replace(/\D/g, '');
-  if (!d) return 'Informe o número da CNH.';
-  if (d.length !== 11) return 'A CNH deve ter 11 dígitos.';
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return 'Informe o número da CNH.';
+  if (digits.length !== 11) return 'A CNH deve ter 11 dígitos.';
   return null;
 }
 
-/** Categoria precisa habilitar motocicleta (A, AB, AC, AD, AE). */
-export function validateMotoCategory(category: string): string | null {
-  const v = category.trim().toUpperCase();
-  if (!v) return 'Informe a categoria.';
-  if (!/^A/.test(v)) return 'Categoria precisa habilitar moto (A, AB…).';
+export function validateMotoCategory(value: string): string | null {
+  const category = value.trim().toUpperCase();
+  if (!category) return 'Informe a categoria.';
+  if (!MOTO_CNH_CATEGORIES.includes(category)) return 'Informe uma categoria que habilite moto.';
   return null;
 }
 
-/** Espera DD/MM/AAAA; a CNH precisa estar dentro da validade. */
 export function validateCnhExpiry(value: string): string | null {
-  const d = value.replace(/\D/g, '');
-  if (!d) return 'Informe a validade da CNH.';
-  if (d.length !== 8) return 'Data inválida. Use DD/MM/AAAA.';
-  const day = Number(d.slice(0, 2));
-  const month = Number(d.slice(2, 4));
-  const year = Number(d.slice(4, 8));
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return 'Informe a validade da CNH.';
+  if (digits.length !== 8) return 'Data inválida. Use DD/MM/AAAA.';
+  const day = Number(digits.slice(0, 2));
+  const month = Number(digits.slice(2, 4));
+  const year = Number(digits.slice(4, 8));
   const date = new Date(year, month - 1, day);
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
-  ) {
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
     return 'Data inválida.';
   }
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (date < today) return 'CNH vencida.';
-  return null;
+  return date < today ? 'CNH vencida.' : null;
 }
 
 export function validateRenavam(value: string): string | null {

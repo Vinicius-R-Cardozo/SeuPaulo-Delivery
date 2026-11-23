@@ -29,12 +29,10 @@ import type {
   SignUpInput,
   Unsubscribe,
 } from '@/services/types';
-import { getSupabase } from './client';
+import { getSupabase, isSupabaseConfigured } from './client';
 import { estimateEtaMinutes } from '@/utils/geo';
 import { orderCode } from '@/utils/id';
 import { RESTAURANT } from '@/data/restaurant';
-import { verificationProvider } from '@/services/verification';
-import { toCapturedFile } from '@/components/onboarding/capture';
 
 const DOCS_BUCKET = 'driver-docs';
 
@@ -152,6 +150,7 @@ function toOrder(r: Row): Order {
     status: r.status as OrderStatus,
     statusHistory: (r.status_history as Order['statusHistory']) ?? [],
     driverId: (r.driver_id as string) ?? null,
+    driverLocationAt: (r.driver_location_at as string) ?? null,
     driverLocation:
       r.driver_lat != null && r.driver_lng != null
         ? { lat: Number(r.driver_lat), lng: Number(r.driver_lng) }
@@ -211,8 +210,9 @@ function toNotification(r: Row): AppNotification {
 /* --------------------------- Repositório --------------------------- */
 
 class SupabaseRepository implements DataRepository {
-  readonly backendName = 'Supabase';
-  private sb = getSupabase();
+  private get sb() {
+    return getSupabase();
+  }
 
   private async profileFromUser(userId: string): Promise<Profile> {
     const { data, error } = await this.sb.from('profiles').select('*').eq('id', userId).single();
@@ -222,6 +222,7 @@ class SupabaseRepository implements DataRepository {
 
   /* ---- Auth ---- */
   async getSession(): Promise<AuthSession | null> {
+    if (!isSupabaseConfigured) return null;
     const { data } = await this.sb.auth.getSession();
     if (!data.session) return null;
     const profile = await this.profileFromUser(data.session.user.id);
@@ -301,7 +302,7 @@ class SupabaseRepository implements DataRepository {
     if (error) throw new Error(error.message);
   }
 
-  async resetPassword(_email: string, newPassword: string): Promise<void> {
+  async resetPassword(newPassword: string): Promise<void> {
     const { error } = await this.sb.auth.updateUser({ password: newPassword });
     if (error) throw new Error(error.message);
   }
@@ -343,7 +344,7 @@ class SupabaseRepository implements DataRepository {
 
   /* ---- Verificação de e-mail no cadastro do cliente ---- */
   // A geração/validação do código roda na Edge Function `signup-code`
-  // (service role + Resend). O código é guardado como HASH e nunca chega ao
+  // O código é guardado como HASH e nunca chega ao
   // frontend. Erros de negócio voltam como { error } (HTTP 200).
   private async callSignupFn<T>(body: Record<string, unknown>): Promise<T> {
     const { data, error } = await this.sb.functions.invoke('signup-code', { body });
@@ -508,8 +509,21 @@ class SupabaseRepository implements DataRepository {
 
   /* ---- Pedidos ---- */
   async createOrder(input: CreateOrderInput): Promise<Order> {
+    if (input.paymentMethod === 'pix') throw new Error('PIX indisponível no momento.');
+    const productIds = [...new Set(input.items.map((item) => item.product.id))];
+    if (productIds.length === 0) throw new Error('Adicione um item ao carrinho.');
+
+    const { data: available, error: catalogError } = await this.sb
+      .from('products')
+      .select('id')
+      .in('id', productIds)
+      .eq('available', true);
+    if (catalogError) throw new Error('Não foi possível confirmar a disponibilidade dos itens.');
+    if (available.length !== productIds.length) {
+      throw new Error('Remova os itens indisponíveis do carrinho para continuar.');
+    }
+
     const iso = new Date().toISOString();
-    const paymentStatus = input.paymentMethod === 'cash' ? 'pending' : 'approved';
     const payload = {
       code: orderCode(),
       customer_id: input.customer.id,
@@ -524,7 +538,7 @@ class SupabaseRepository implements DataRepository {
       total: input.total,
       coupon_code: input.couponCode,
       payment_method: input.paymentMethod,
-      payment_status: paymentStatus,
+      payment_status: 'pending',
       change_for: input.changeFor,
       status: 'received' as OrderStatus,
       status_history: [{ status: 'received', at: iso }],
@@ -572,39 +586,16 @@ class SupabaseRepository implements DataRepository {
       .from('orders')
       .select('*')
       .is('driver_id', null)
-      .eq('status', 'ready')
+      .in('status', ['confirmed','preparing','ready'])
       .eq('fulfillment', 'delivery');
     if (error) throw new Error(error.message);
     return data.map(toOrder);
   }
 
   async updateOrderStatus(id: string, status: OrderStatus, note?: string): Promise<Order> {
-    const current = await this.getOrder(id);
-    if (!current) throw new Error('Pedido não encontrado.');
-    const iso = new Date().toISOString();
-    const history = [...current.statusHistory, { status, at: iso, note }];
-    const patch: Row = { status, status_history: history, updated_at: iso };
-    if (status === 'delivered') {
-      patch.payment_status = 'approved';
-      patch.eta_minutes = 0;
-    }
-    const { data, error } = await this.sb
-      .from('orders')
-      .update(patch)
-      .eq('id', id)
-      .select('*')
-      .single();
-    if (error) throw new Error(error.message);
-    return toOrder(data);
-  }
-
-  async assignDriver(orderId: string, driverId: string): Promise<Order> {
-    const { data, error } = await this.sb
-      .from('orders')
-      .update({ driver_id: driverId, updated_at: new Date().toISOString() })
-      .eq('id', orderId)
-      .select('*')
-      .single();
+    const { data, error } = await this.sb.rpc('advance_order', {
+      p_order_id: id, p_status: status, p_note: note ?? null,
+    });
     if (error) throw new Error(error.message);
     return toOrder(data);
   }
@@ -634,13 +625,7 @@ class SupabaseRepository implements DataRepository {
     return res ?? { ok: false, error: 'Resposta inválida do servidor.' };
   }
 
-  async updateDriverLocation(orderId: string, location: LatLng): Promise<void> {
-    const { error } = await this.sb
-      .from('orders')
-      .update({ driver_lat: location.lat, driver_lng: location.lng, updated_at: new Date().toISOString() })
-      .eq('id', orderId);
-    if (error) throw new Error(error.message);
-  }
+
 
   /* ---- Entregadores ---- */
   async getDrivers(): Promise<Driver[]> {
@@ -737,25 +722,11 @@ class SupabaseRepository implements DataRepository {
       documents.push({ kind: m.kind, path, uploadedAt: nowIso, ocr: null });
     }
 
-    // 4. Triagem automática (metadados; nunca afirma autenticidade).
-    const analysis = await verificationProvider.analyze({
-      vehicle: input.vehicle,
-      files: input.documents.map(toCapturedFile),
-      claimed: {
-        cnh: input.cnh ? { ...input.cnh } : undefined,
-        moto: input.moto ? { ...input.moto } : undefined,
-      },
-    });
-    // A candidatura entra como revisão manual; a promoção para aprovado
-    // (provisório) é decidida pelo SERVIDOR, na RPC auto_approve_application,
-    // que reconfere os dados guardados — o cliente não decide o status.
+    // O painel recebe a candidatura pendente para análise dos documentos.
     const reviews: ReviewEvent[] = [
-      { at: nowIso, by: userId, action: 'submitted', status: 'under_analysis' },
-      { at: nowIso, by: 'auto', action: 'auto_analysis', status: 'manual_review' },
+      { at: nowIso, by: userId, action: 'submitted', status: 'manual_review' },
     ];
 
-    // 5. Abre a candidatura. RLS garante user_id = auth.uid() e impede status
-    //    aprovado/reprovado no insert (isso só via RPC SECURITY DEFINER).
     const { data: appRow, error: appErr } = await this.sb
       .from('driver_applications')
       .insert({
@@ -765,16 +736,14 @@ class SupabaseRepository implements DataRepository {
         admin_confirmed: false,
         full_name: input.fullName,
         cpf: input.cpf.replace(/\D/g, ''),
-        rg: input.rg,
         birth_date: input.birthDate,
         email: input.email,
         phone: input.phone,
         address: input.address,
-        cnh: input.cnh ?? null,
+        cnh: input.cnh,
         moto: input.moto ?? null,
         bike: input.bike ?? null,
         documents,
-        auto_analysis: analysis,
         reviews,
       })
       .select('*')
@@ -786,18 +755,8 @@ class SupabaseRepository implements DataRepository {
       throw new Error(appErr.message);
     }
 
-    // 6. Auto-aprovação provisória: o servidor reconfere e, se passar, libera o
-    //    entregador na hora (ainda com a mini-aprovação pendente do admin).
-    let finalRow = appRow;
-    if (analysis.recommendation === 'auto_approve') {
-      const { data: promoted, error: rpcErr } = await this.sb.rpc('auto_approve_application', {
-        p_id: appRow.id,
-      });
-      if (!rpcErr && promoted) finalRow = promoted as Row;
-    }
-
     const profile = await this.profileFromUser(userId);
-    return { profile, application: toApplication(finalRow) };
+    return { profile, application: toApplication(appRow) };
   }
 
   async getDriverApplication(userId: string): Promise<DriverApplication | null> {
@@ -855,43 +814,45 @@ class SupabaseRepository implements DataRepository {
   }
 
   /* ---- Realtime ---- */
-  subscribeOrder(orderId: string, cb: (order: Order) => void): Unsubscribe {
-    void this.getOrder(orderId).then((o) => o && cb(o));
-    const channel = this.sb
-      .channel(`order:${orderId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
-        (payload) => cb(toOrder(payload.new as Row)),
-      )
-      .subscribe();
+  private orderFeed<T>(name: string, read: () => Promise<T>, cb: (value: T) => void, filter?: string): Unsubscribe {
+    let active = true;
+    let reading = false;
+    let again = false;
+    const refresh = async () => {
+      if (!active || document.hidden) return;
+      if (reading) { again = true; return; }
+      reading = true;
+      try {
+        const value = await read();
+        if (active) cb(value);
+      } catch {
+        // A reconnect, visibility change or the periodic refresh will retry.
+      } finally {
+        reading = false;
+        if (again) { again = false; void refresh(); }
+      }
+    };
+    const channel = this.sb.channel(name)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter }, refresh)
+      .subscribe(state => { if (state === 'SUBSCRIBED') void refresh(); });
+    void refresh();
+    const timer = window.setInterval(refresh, 10000);
+    document.addEventListener('visibilitychange', refresh);
     return () => {
+      active = false;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
       void this.sb.removeChannel(channel);
     };
+  }
+  subscribeOrder(orderId: string, cb: (order: Order | null) => void): Unsubscribe {
+    return this.orderFeed('order:' + orderId, () => this.getOrder(orderId), cb, 'id=eq.' + orderId);
   }
   subscribeOrders(cb: (orders: Order[]) => void): Unsubscribe {
-    void this.getAllOrders().then(cb);
-    const channel = this.sb
-      .channel('orders:all')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        void this.getAllOrders().then(cb);
-      })
-      .subscribe();
-    return () => {
-      void this.sb.removeChannel(channel);
-    };
+    return this.orderFeed('orders:all', () => this.getAllOrders(), cb);
   }
   subscribeAvailableDeliveries(cb: (orders: Order[]) => void): Unsubscribe {
-    void this.getAvailableDeliveries().then(cb);
-    const channel = this.sb
-      .channel('orders:available')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        void this.getAvailableDeliveries().then(cb);
-      })
-      .subscribe();
-    return () => {
-      void this.sb.removeChannel(channel);
-    };
+    return this.orderFeed('orders:available', () => this.getAvailableDeliveries(), cb);
   }
 }
 

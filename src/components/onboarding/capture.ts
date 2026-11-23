@@ -1,9 +1,8 @@
-import type { DocumentKind } from '@/types';
-import type { CapturedFile } from '@/services/verification';
+import type { DriverRegistrationDocumentKind } from '@/types';
 
 /** Imagem capturada no onboarding (câmera ou arquivo), já redimensionada. */
 export interface CapturedMedia {
-  kind: DocumentKind;
+  kind: DriverRegistrationDocumentKind;
   blob: Blob;
   dataUrl: string;
   mime: string;
@@ -12,25 +11,13 @@ export interface CapturedMedia {
   height: number;
 }
 
-/** Metadados para a camada de verificação (sem o binário). */
-export function toCapturedFile(m: CapturedMedia): CapturedFile {
-  return {
-    kind: m.kind,
-    mime: m.mime,
-    sizeBytes: m.sizeBytes,
-    width: m.width,
-    height: m.height,
-  };
-}
-
 const MAX_SIDE = 1400;
 const JPEG_QUALITY = 0.85;
 
 /** Redimensiona (mantendo proporção) e comprime uma imagem para JPEG. */
 export async function processImage(
   source: HTMLVideoElement | HTMLImageElement,
-  kind: DocumentKind,
-  mirror = false,
+  kind: DriverRegistrationDocumentKind,
 ): Promise<CapturedMedia> {
   const sw = source instanceof HTMLVideoElement ? source.videoWidth : source.naturalWidth;
   const sh = source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight;
@@ -42,10 +29,6 @@ export async function processImage(
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d')!;
-  if (mirror) {
-    ctx.translate(w, 0);
-    ctx.scale(-1, 1);
-  }
   ctx.drawImage(source, 0, 0, w, h);
 
   const blob = await new Promise<Blob>((resolve, reject) =>
@@ -60,7 +43,7 @@ export async function processImage(
 }
 
 /** Lê um File (galeria) para um elemento de imagem e processa. */
-export async function processFile(file: File, kind: DocumentKind): Promise<CapturedMedia> {
+export async function processFile(file: File, kind: DriverRegistrationDocumentKind): Promise<CapturedMedia> {
   const url = URL.createObjectURL(file);
   try {
     const img = new Image();

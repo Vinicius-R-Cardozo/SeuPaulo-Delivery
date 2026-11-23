@@ -5,7 +5,6 @@ import { AuthShell } from '@/components/layout/AuthShell';
 import { Input } from '@/components/ui/Input';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { Button } from '@/components/ui/Button';
-import { DemoAccounts } from '@/components/layout/DemoAccounts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/providers/ToastProvider';
 import { validateEmail } from '@/utils/validation';
@@ -66,7 +65,6 @@ export function DriverLogin() {
           Entrar
         </Button>
       </form>
-      <DemoAccounts onPick={(e, p) => { setEmail(e); setPassword(p); }} highlight="driver" />
       <div className="mt-6 text-center text-xs text-cream-3">
         <Link to="/login" className="hover:text-cream">
           Sou cliente

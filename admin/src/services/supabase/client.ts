@@ -1,25 +1,22 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-/**
- * Cliente Supabase criado a partir das variáveis de ambiente públicas.
- * A `anon key` é pública por design (protegida por RLS no banco). A
- * `service_role key` NUNCA deve aparecer no frontend — veja o README.
- */
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const url = import.meta.env.VITE_SUPABASE_URL?.trim();
+const publicKey =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
-export const isSupabaseConfigured = Boolean(url && anonKey);
+export const isSupabaseConfigured = Boolean(url && publicKey);
 
 let client: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient {
-  if (!isSupabaseConfigured) {
+  if (!url || !publicKey) {
     throw new Error(
-      'Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env.',
+      'Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY no .env.local.',
     );
   }
   if (!client) {
-    client = createClient(url!, anonKey!, {
+    client = createClient(url, publicKey, {
       auth: { persistSession: true, autoRefreshToken: true },
     });
   }

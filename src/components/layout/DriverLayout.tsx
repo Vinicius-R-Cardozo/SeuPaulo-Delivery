@@ -1,4 +1,9 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { repository } from '@/services';
+import { startTracking } from '@/services/deliveryTracking';
+import { Capacitor } from '@capacitor/core';
+import { NavLink, Outlet, useMatch } from 'react-router-dom';
 import { LayoutGrid, Wallet, History, User } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { NotificationBell } from './NotificationBell';
@@ -12,21 +17,40 @@ const NAV = [
 ];
 
 export function DriverLayout() {
+  const { profile } = useAuth();
+  useEffect(() => {
+    if (!profile) return;
+    let active = true;
+    const restore = async () => {
+      if (document.hidden) return;
+      const trips = await repository.getOrdersByDriver(profile.id);
+      if (!active) return;
+      const trip = trips.find(o => o.status === 'on_the_way');
+      if (trip) await startTracking(trip.id);
+    };
+    const onResume = () => void restore().catch(() => {});
+    onResume();
+    document.addEventListener('visibilitychange', onResume);
+    return () => { active = false; document.removeEventListener('visibilitychange', onResume); };
+  }, [profile?.id]);
+  const delivery = useMatch('/entregador/entrega/:id');
+  const hideTabBar = Capacitor.isNativePlatform() && Boolean(delivery);
+
   return (
-    <div className="mx-auto flex min-h-screen max-w-lg flex-col bg-ink">
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col bg-ink">
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink-3 bg-ink/90 px-4 py-3 backdrop-blur">
-        <Logo size="sm" />
+        <Logo size="sm" light={Capacitor.isNativePlatform()} />
         <span className="ml-auto mr-1 rounded-full bg-amber/15 px-2.5 py-1 text-[11px] font-semibold text-amber">
           Entregador
         </span>
         <NotificationBell />
       </header>
 
-      <main className="flex-1 pb-20">
+      <main className={cn('flex-1', !hideTabBar && 'pb-20')}>
         <Outlet />
       </main>
 
-      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto max-w-lg border-t border-ink-3 bg-ink-2/95 backdrop-blur">
+      {!hideTabBar && <nav aria-label="Navegação do entregador" className="app-tab-bar safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto max-w-lg border-t border-ink-3 bg-ink-2/95 backdrop-blur">
         <div className="grid grid-cols-4">
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink
@@ -45,7 +69,7 @@ export function DriverLayout() {
             </NavLink>
           ))}
         </div>
-      </nav>
+      </nav>}
     </div>
   );
 }

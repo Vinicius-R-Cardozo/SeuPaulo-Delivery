@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, Bike, XCircle, MapPin, Store, UserPlus, Sparkles } from 'lucide-react';
+import { ChevronRight, Bike, XCircle, MapPin, Store } from 'lucide-react';
 import { useOrdersFeed } from '@/contexts/OrdersContext';
 import { repository } from '@/services';
 import { useToast } from '@/providers/ToastProvider';
 import type { Driver, Order, OrderStatus } from '@/types';
 import { Button } from '@/components/ui/Button';
-import { Modal, ConfirmDialog } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/Modal';
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { formatBRL, formatDateTime, formatKm } from '@/utils/format';
+import { formatBRL, formatDateTime } from '@/utils/format';
 import { nextStatus, ORDER_STATUS_META } from '@/utils/status';
-import { haversineKm } from '@/utils/geo';
-import { RESTAURANT } from '@/data/restaurant';
 import { cn } from '@/utils/cn';
 
 const FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
@@ -20,6 +18,9 @@ const FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'confirmed', label: 'Confirmados' },
   { value: 'preparing', label: 'Em preparo' },
   { value: 'ready', label: 'Prontos' },
+  { value: 'accepted', label: 'Aceitos' },
+  { value: 'at_restaurant', label: 'Na retirada' },
+  { value: 'arrived', label: 'No cliente' },
   { value: 'on_the_way', label: 'Saíram' },
   { value: 'delivered', label: 'Entregues' },
   { value: 'cancelled', label: 'Cancelados' },
@@ -31,7 +32,6 @@ export function AdminOrders() {
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [assignOrder, setAssignOrder] = useState<Order | null>(null);
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -51,14 +51,8 @@ export function AdminOrders() {
   }, [orders]);
 
   const advance = async (order: Order) => {
-    const next = nextStatus(order.status);
+    const next = nextStatus(order.status, order.fulfillment);
     if (!next) return;
-    // Não deixa "saiu para entrega" sem entregador (em delivery).
-    if (next === 'on_the_way' && order.fulfillment === 'delivery' && !order.driverId) {
-      setAssignOrder(order);
-      toast.info('Atribua um entregador antes de despachar.');
-      return;
-    }
     setBusy(true);
     try {
       await repository.updateOrderStatus(order.id, next);
@@ -119,7 +113,7 @@ export function AdminOrders() {
           filtered.map((order) => {
             const driver = drivers.find((d) => d.id === order.driverId);
             const isOpen = expanded === order.id;
-            const next = nextStatus(order.status);
+            const next = nextStatus(order.status, order.fulfillment);
             const terminal = order.status === 'delivered' || order.status === 'cancelled';
             return (
               <div key={order.id} className="card overflow-hidden">
@@ -185,14 +179,6 @@ export function AdminOrders() {
                           <Bike size={13} />
                           {driver ? `${driver.model} · ${driver.plate}` : 'Sem entregador'}
                         </span>
-                        {!terminal && (
-                          <button
-                            onClick={() => setAssignOrder(order)}
-                            className="flex items-center gap-1 font-semibold text-brand-2"
-                          >
-                            <UserPlus size={13} /> {driver ? 'Trocar' : 'Atribuir'}
-                          </button>
-                        )}
                       </div>
                     )}
 
@@ -209,7 +195,7 @@ export function AdminOrders() {
                         </Button>
                         {next && (
                           <Button size="sm" fullWidth loading={busy} onClick={() => advance(order)}>
-                            Avançar → {ORDER_STATUS_META[next].label}
+                            {next === 'confirmed' ? 'Confirmar pedido' : ORDER_STATUS_META[next].label}
                           </Button>
                         )}
                       </div>
@@ -222,18 +208,6 @@ export function AdminOrders() {
         )}
       </div>
 
-      {assignOrder && (
-        <AssignDriverModal
-          order={assignOrder}
-          drivers={drivers}
-          onClose={() => setAssignOrder(null)}
-          onAssigned={() => {
-            setAssignOrder(null);
-            toast.success('Entregador atribuído!');
-          }}
-        />
-      )}
-
       <ConfirmDialog
         open={cancelId !== null}
         onClose={() => setCancelId(null)}
@@ -245,84 +219,5 @@ export function AdminOrders() {
         loading={busy}
       />
     </div>
-  );
-}
-
-function AssignDriverModal({
-  order,
-  drivers,
-  onClose,
-  onAssigned,
-}: {
-  order: Order;
-  drivers: Driver[];
-  onClose: () => void;
-  onAssigned: () => void;
-}) {
-  const toast = useToast();
-  const [busy, setBusy] = useState(false);
-
-  // Sugere o entregador aprovado, online e mais próximo do cliente.
-  const ranked = useMemo(() => {
-    const approved = drivers.filter((d) => d.status === 'approved');
-    const dest = order.address ? { lat: order.address.lat, lng: order.address.lng } : RESTAURANT.location;
-    return approved
-      .map((d) => ({
-        driver: d,
-        distance: d.location ? haversineKm(d.location, dest) : Infinity,
-      }))
-      .sort((a, b) => {
-        if (a.driver.online !== b.driver.online) return a.driver.online ? -1 : 1;
-        return a.distance - b.distance;
-      });
-  }, [drivers, order]);
-
-  const assign = async (driverId: string) => {
-    setBusy(true);
-    try {
-      await repository.assignDriver(order.id, driverId);
-      onAssigned();
-    } catch (err) {
-      toast.error((err as Error).message);
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Modal open onClose={onClose} title={`Atribuir entregador · ${order.code}`}>
-      <div className="space-y-2">
-        {ranked.length === 0 ? (
-          <p className="py-6 text-center text-sm text-cream-3">Nenhum entregador aprovado.</p>
-        ) : (
-          ranked.map(({ driver, distance }, i) => (
-            <button
-              key={driver.id}
-              disabled={busy}
-              onClick={() => assign(driver.id)}
-              className="flex w-full items-center gap-3 rounded-xl border border-ink-4 p-3 text-left transition-colors hover:border-brand-2 disabled:opacity-50"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber/15 text-lg">🛵</span>
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 text-sm font-semibold text-cream">
-                  {driver.model}
-                  {i === 0 && driver.online && (
-                    <span className="badge bg-success/15 text-success">
-                      <Sparkles size={11} /> Mais próximo
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-cream-3">
-                  {driver.plate} ·{' '}
-                  <span className={driver.online ? 'text-success' : 'text-cream-3'}>
-                    {driver.online ? 'online' : 'offline'}
-                  </span>
-                  {Number.isFinite(distance) && ` · ${formatKm(distance)}`}
-                </p>
-              </div>
-            </button>
-          ))
-        )}
-      </div>
-    </Modal>
   );
 }

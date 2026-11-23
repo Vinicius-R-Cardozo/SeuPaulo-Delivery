@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bike, Store, Plus, MapPin, Check, QrCode, CreditCard, Banknote } from 'lucide-react';
+import { ArrowLeft, Bike, Store, Plus, MapPin, Check, CreditCard, Banknote } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/providers/ToastProvider';
+import { startCustomerLive } from '@/services/orderLive';
 import { repository } from '@/services';
-import { paymentProvider } from '@/services/payments';
-import type { Address, FulfillmentType, PaymentMethod } from '@/types';
+import type { Address, FulfillmentType } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { FullScreenLoader } from '@/components/ui/Spinner';
@@ -15,11 +15,10 @@ import { calcDeliveryFee, isWithinDeliveryRadius } from '@/utils/geo';
 import { RESTAURANT } from '@/data/restaurant';
 import { cn } from '@/utils/cn';
 
-const PAYMENTS: { value: PaymentMethod; label: string; icon: typeof QrCode; hint: string }[] = [
-  { value: 'pix', label: 'PIX', icon: QrCode, hint: 'Aprovação na hora' },
-  { value: 'card', label: 'Cartão', icon: CreditCard, hint: 'Crédito ou débito na entrega' },
-  { value: 'cash', label: 'Dinheiro', icon: Banknote, hint: 'Pague na entrega' },
-];
+const PAYMENTS = [
+  { value: 'card', label: 'Cartão', icon: CreditCard, hint: 'Crédito ou débito no recebimento' },
+  { value: 'cash', label: 'Dinheiro', icon: Banknote, hint: 'Pague no recebimento' },
+] as const;
 
 export function Checkout() {
   const navigate = useNavigate();
@@ -31,7 +30,7 @@ export function Checkout() {
   const [loadingAddr, setLoadingAddr] = useState(true);
   const [fulfillment, setFulfillment] = useState<FulfillmentType>('delivery');
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
-  const [payment, setPayment] = useState<PaymentMethod>('pix');
+  const [payment, setPayment] = useState<(typeof PAYMENTS)[number]['value']>('cash');
   const [needsChange, setNeedsChange] = useState(false);
   const [changeFor, setChangeFor] = useState('');
   const [placing, setPlacing] = useState(false);
@@ -97,10 +96,8 @@ export function Checkout() {
         changeFor: changeValue,
       });
 
-      // Camada de pagamento isolada (demo). Em produção, o gateway confirma via webhook.
-      await paymentProvider.createIntent(order.id, total, payment);
-
       placedRef.current = true;
+      void startCustomerLive(order).catch(() => {});
       toast.success('Pedido realizado! Acompanhe em tempo real. 🍻');
       // Navega ANTES de limpar o carrinho: assim o Checkout desmonta e o
       // redirect de "carrinho vazio" não corre contra o acompanhamento.

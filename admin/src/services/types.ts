@@ -44,12 +44,11 @@ export interface DriverApplicationInput {
   vehicle: DeliveryVehicle;
   fullName: string;
   cpf: string;
-  rg: string;
   birthDate: string;
   email: string;
   phone: string;
   address: ApplicationAddress;
-  cnh?: CnhInfo | null;
+  cnh: CnhInfo | null;
   moto?: MotoInfo | null;
   bike?: BikeInfo | null;
   documents: CapturedDocument[];
@@ -141,13 +140,11 @@ export interface DataRepository {
   /** pedidos prontos e ainda sem entregador atribuído */
   getAvailableDeliveries(): Promise<Order[]>;
   updateOrderStatus(id: string, status: OrderStatus, note?: string): Promise<Order>;
-  assignDriver(orderId: string, driverId: string): Promise<Order>;
   cancelOrder(id: string, reason?: string): Promise<Order>;
   /** Código de entrega do pedido — só o cliente dono consegue ler (RLS). */
   getDeliveryCode(orderId: string): Promise<string | null>;
   /** Confirma a entrega validando o código no backend (não no frontend). */
   confirmDelivery(orderId: string, code: string): Promise<{ ok: boolean; error?: string }>;
-  updateDriverLocation(orderId: string, location: LatLng): Promise<void>;
 
   /* ---- Entregadores ---- */
   getDrivers(): Promise<Driver[]>;

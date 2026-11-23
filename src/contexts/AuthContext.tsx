@@ -1,3 +1,5 @@
+import { clearCustomerLive } from '@/services/orderLive';
+import { stopTracking } from '@/services/deliveryTracking';
 import {
   createContext,
   useCallback,
@@ -34,13 +36,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    (async () => {
-      const session = await repository.getSession();
-      if (active) {
-        setProfileState(session?.profile ?? null);
-        setLoading(false);
-      }
-    })();
+    repository.getSession()
+      .then((session) => {
+        if (active) setProfileState(session?.profile ?? null);
+      })
+      .catch(() => {
+        if (active) setProfileState(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
     return () => {
       active = false;
     };
@@ -59,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    await Promise.all([stopTracking(), clearCustomerLive().catch(() => {})]);
     await repository.signOut();
     setProfileState(null);
   }, []);

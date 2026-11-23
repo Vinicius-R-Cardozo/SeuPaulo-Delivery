@@ -29,7 +29,7 @@ import type {
   SignUpInput,
   Unsubscribe,
 } from '@/services/types';
-import { getSupabase } from './client';
+import { getSupabase, isSupabaseConfigured } from './client';
 import { estimateEtaMinutes } from '@/utils/geo';
 import { orderCode } from '@/utils/id';
 import { RESTAURANT } from '@/data/restaurant';
@@ -150,6 +150,7 @@ function toOrder(r: Row): Order {
     status: r.status as OrderStatus,
     statusHistory: (r.status_history as Order['statusHistory']) ?? [],
     driverId: (r.driver_id as string) ?? null,
+    driverLocationAt: (r.driver_location_at as string) ?? null,
     driverLocation:
       r.driver_lat != null && r.driver_lng != null
         ? { lat: Number(r.driver_lat), lng: Number(r.driver_lng) }
@@ -210,7 +211,9 @@ function toNotification(r: Row): AppNotification {
 
 class SupabaseRepository implements DataRepository {
   readonly backendName = 'Supabase';
-  private sb = getSupabase();
+  private get sb() {
+    return getSupabase();
+  }
 
   private async profileFromUser(userId: string): Promise<Profile> {
     const { data, error } = await this.sb.from('profiles').select('*').eq('id', userId).single();
@@ -220,6 +223,7 @@ class SupabaseRepository implements DataRepository {
 
   /* ---- Auth ---- */
   async getSession(): Promise<AuthSession | null> {
+    if (!isSupabaseConfigured) return null;
     const { data } = await this.sb.auth.getSession();
     if (!data.session) return null;
     const profile = await this.profileFromUser(data.session.user.id);
@@ -516,39 +520,16 @@ class SupabaseRepository implements DataRepository {
       .from('orders')
       .select('*')
       .is('driver_id', null)
-      .eq('status', 'ready')
+      .in('status', ['confirmed','preparing','ready'])
       .eq('fulfillment', 'delivery');
     if (error) throw new Error(error.message);
     return data.map(toOrder);
   }
 
   async updateOrderStatus(id: string, status: OrderStatus, note?: string): Promise<Order> {
-    const current = await this.getOrder(id);
-    if (!current) throw new Error('Pedido não encontrado.');
-    const iso = new Date().toISOString();
-    const history = [...current.statusHistory, { status, at: iso, note }];
-    const patch: Row = { status, status_history: history, updated_at: iso };
-    if (status === 'delivered') {
-      patch.payment_status = 'approved';
-      patch.eta_minutes = 0;
-    }
-    const { data, error } = await this.sb
-      .from('orders')
-      .update(patch)
-      .eq('id', id)
-      .select('*')
-      .single();
-    if (error) throw new Error(error.message);
-    return toOrder(data);
-  }
-
-  async assignDriver(orderId: string, driverId: string): Promise<Order> {
-    const { data, error } = await this.sb
-      .from('orders')
-      .update({ driver_id: driverId, updated_at: new Date().toISOString() })
-      .eq('id', orderId)
-      .select('*')
-      .single();
+    const { data, error } = await this.sb.rpc('advance_order', {
+      p_order_id: id, p_status: status, p_note: note ?? null,
+    });
     if (error) throw new Error(error.message);
     return toOrder(data);
   }
@@ -576,13 +557,7 @@ class SupabaseRepository implements DataRepository {
     return res ?? { ok: false, error: 'Resposta inválida do servidor.' };
   }
 
-  async updateDriverLocation(orderId: string, location: LatLng): Promise<void> {
-    const { error } = await this.sb
-      .from('orders')
-      .update({ driver_lat: location.lat, driver_lng: location.lng, updated_at: new Date().toISOString() })
-      .eq('id', orderId);
-    if (error) throw new Error(error.message);
-  }
+
 
   /* ---- Entregadores ---- */
   async getDrivers(): Promise<Driver[]> {

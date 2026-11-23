@@ -198,6 +198,65 @@
     border-radius: 999px;
     letter-spacing: 0.02em;
   }
+
+  .app-welcome {
+    display: grid;
+    min-height: 100dvh;
+    grid-template-rows: minmax(13rem, 1fr) auto;
+  }
+
+  .app-welcome-photo {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .app-welcome-photo::after {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      var(--color-ink),
+      rgb(18 16 16 / 45%) 18%,
+      transparent 42%,
+      transparent 65%,
+      var(--color-ink)
+    );
+    content: '';
+  }
+
+  .native-app .app-tab-bar a {
+    position: relative;
+    min-height: 3.5rem;
+    justify-content: center;
+  }
+
+  .native-app .app-tab-bar a[aria-current='page']::before {
+    position: absolute;
+    top: 0;
+    width: 1.75rem;
+    height: 0.1875rem;
+    border-radius: 0 0 999px 999px;
+    background-color: currentColor;
+    content: '';
+  }
+
+  @media (orientation: landscape) and (min-width: 42rem) {
+    .app-welcome {
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr;
+    }
+
+    .app-welcome-photo::after {
+      background:
+        linear-gradient(180deg, var(--color-ink), transparent 42%),
+        linear-gradient(90deg, transparent 68%, var(--color-ink));
+    }
+
+    .app-welcome-content {
+      align-self: center;
+      padding-block: 1.5rem;
+    }
+  }
 }
 
 @layer utilities {
@@ -244,23 +303,156 @@
   }
 }
 
-/* Leaflet — ajustes de tema escuro para casar com o boteco */
-.leaflet-container {
-  background: var(--color-ink-3);
+/* Cartografia do Seu Paulo */
+.seu-paulo-map.leaflet-container {
+  background: #252424;
   font-family: var(--font-sans);
 }
-.leaflet-tile {
-  filter: saturate(0.85) brightness(0.9);
+
+.seu-paulo-map .leaflet-tile {
+  filter: grayscale(1) invert(1) brightness(1.1) contrast(.82);
 }
-.leaflet-control-attribution {
-  background: rgba(18, 16, 16, 0.7) !important;
-  color: color-mix(in srgb, var(--color-cream) 40%, transparent) !important;
+
+.seu-paulo-map .leaflet-control-attribution {
+  background: #1a1919;
+  color: #b9b5b0;
+  border-radius: 6px 0 0;
+  padding-inline: 6px;
 }
-.leaflet-control-attribution a {
-  color: var(--color-amber) !important;
+
+.seu-paulo-map .leaflet-control-attribution a {
+  color: inherit;
 }
-.leaflet-bar a {
-  background: var(--color-ink-2) !important;
-  color: var(--color-cream) !important;
-  border-color: var(--color-ink-4) !important;
+
+.seu-paulo-map .leaflet-control-zoom {
+  margin: 12px 12px 0 0;
+  border: 1px solid #46423f;
+  border-radius: 10px;
+  overflow: hidden;
 }
+
+.seu-paulo-map .leaflet-bar a,
+.map-recenter {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  background: #1a1919;
+  color: #f0ebe5;
+}
+
+.seu-paulo-map .leaflet-bar a {
+  border-color: #46423f;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.seu-paulo-map .leaflet-bar a.leaflet-disabled {
+  color: #84807a;
+}
+
+.map-recenter {
+  cursor: pointer;
+  border: 1px solid #46423f;
+  border-radius: 10px;
+}
+
+.map-recenter:focus-visible,
+.seu-paulo-map a:focus-visible,
+.seu-paulo-map .map-marker:focus-visible {
+  outline: 2px solid #e5bd70;
+  outline-offset: -2px;
+}
+
+.map-marker__badge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--marker-color);
+  border-radius: 10px;
+  background: var(--marker-bg);
+  color: var(--marker-color);
+  box-shadow: 0 2px 7px #0006;
+}
+
+.map-marker__badge::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 3px);
+  bottom: -4px;
+  width: 6px;
+  height: 6px;
+  border-right: 1px solid var(--marker-color);
+  border-bottom: 1px solid var(--marker-color);
+  background: var(--marker-bg);
+  transform: rotate(45deg);
+}
+
+.map-marker--restaurant {
+  --marker-bg: #50282b;
+  --marker-color: #ffbeb6;
+}
+
+.map-marker--destination {
+  --marker-bg: #242725;
+  --marker-color: #e7eae5;
+}
+
+.map-marker--courier {
+  --marker-bg: #e5bd70;
+  --marker-color: #2a2218;
+}
+
+.seu-paulo-map .leaflet-popup-content-wrapper,
+.seu-paulo-map .leaflet-popup-tip {
+  background: #1a1919;
+  color: #f0ebe5;
+}
+
+.seu-paulo-map .leaflet-popup-content-wrapper {
+  border-radius: 9px;
+  font-weight: 600;
+}
+
+.seu-paulo-map a.leaflet-popup-close-button {
+  color: #b9b5b0;
+}
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+  padding: 9px 8px;
+  border-top: 1px solid #393635;
+  background: #1a1919;
+  color: #d1cbc4;
+  font-size: .6875rem;
+  line-height: 1.25;
+}
+
+.map-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.map-courier-icon {
+  display: inline-block;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  mask: url('./components/maps/courier.svg') center / contain no-repeat;
+}
+
+.map-legend .map-courier-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.map-legend__restaurant { color: #ffbeb6; }
+.map-legend__destination { color: #e7eae5; }
+.map-legend__courier { color: #e5bd70; }

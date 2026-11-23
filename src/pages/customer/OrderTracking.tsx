@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
 import { OrderStatusBadge } from '@/components/ui/StatusBadge';
 import { formatBRL, formatTime } from '@/utils/format';
+import { estimateRemainingDeliveryMinutes } from '@/utils/geo';
 import { ORDER_FLOW, ORDER_STATUS_META } from '@/utils/status';
 import { RESTAURANT } from '@/data/restaurant';
 import { cn } from '@/utils/cn';
@@ -33,10 +34,14 @@ export function OrderTracking() {
     order?.fulfillment === 'delivery' &&
     (order.status === 'on_the_way' || order.status === 'arrived');
   useEffect(() => {
-    if (nearDelivery && id && !deliveryCode) {
-      repository.getDeliveryCode(id).then(setDeliveryCode);
-    }
-  }, [nearDelivery, id, deliveryCode]);
+    let active = true;
+    setDeliveryCode(null);
+    if (!nearDelivery || !id) return;
+    const load = () => void repository.getDeliveryCode(id).then(code => { if (active) setDeliveryCode(code); });
+    load();
+    const timer = window.setInterval(load, 15000);
+    return () => { active = false; clearInterval(timer); };
+  }, [nearDelivery, id]);
 
   if (loading) return <FullScreenLoader label="Carregando seu pedido…" />;
   if (!order)
@@ -49,8 +54,16 @@ export function OrderTracking() {
     );
 
   const isDelivery = order.fulfillment === 'delivery';
-  const showMap =
-    isDelivery && (order.status === 'on_the_way' || order.status === 'arrived') && order.address;
+  const destination = nearDelivery ? order.address : null;
+  const remainingMinutes = destination && order.driverLocation
+    ? estimateRemainingDeliveryMinutes(order.driverLocation, destination)
+    : null;
+  const estimatedMinutes = remainingMinutes ?? order.etaMinutes ?? RESTAURANT.avgPrepMinutes;
+  const deliveryStatus = order.status === 'arrived'
+    ? 'Seu entregador chegou'
+    : nearDelivery && remainingMinutes === null
+      ? 'Pedido a caminho'
+      : `Previsão de entrega ~${estimatedMinutes} min`;
   const currentStep = ORDER_STATUS_META[order.status].step;
   const cancelled = order.status === 'cancelled';
 
@@ -79,26 +92,26 @@ export function OrderTracking() {
       </div>
 
       {/* Mapa ao vivo */}
-      {showMap && (
+      {destination && (
         <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-ink-3">
           <div className="h-64">
             <DeliveryMap
               restaurant={RESTAURANT.location}
-              customer={{ lat: order.address!.lat, lng: order.address!.lng }}
+              customer={destination}
               driver={order.driverLocation}
-              fitKey={`${order.driverLocation?.lat}-${order.driverLocation?.lng}`}
+              fitKey={order.status}
             />
           </div>
           <div className="flex items-center gap-3 bg-ink-2 px-4 py-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber/15 text-xl">
-              🛵
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber/15 text-amber">
+              <span className="map-courier-icon" aria-hidden="true" />
             </span>
             <div className="flex-1">
               <p className="text-sm font-semibold text-cream">
-                Seu pedido chega em ~{order.etaMinutes ?? RESTAURANT.avgPrepMinutes} min
+                {deliveryStatus}
               </p>
               <p className="text-xs text-cream-3">
-                {driver ? `${driver.model} · ${driver.color} · ${driver.plate}` : 'A caminho'}
+                {order.driverLocationAt ? `Última localização às ${formatTime(order.driverLocationAt)}` : 'Aguardando a localização do entregador'}
               </p>
             </div>
             {driver && (
@@ -115,7 +128,7 @@ export function OrderTracking() {
       )}
 
       {/* ETA card (quando ainda não saiu) */}
-      {!showMap && !cancelled && (
+      {!destination && !cancelled && (
         <div className="mx-4 mb-4 flex items-center gap-3 rounded-2xl border border-ink-3 bg-ink-2 p-4">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand/15 text-brand-2">
             {isDelivery ? <Bike size={20} /> : <Store size={20} />}
@@ -127,7 +140,7 @@ export function OrderTracking() {
                   ? 'Pedido entregue 🎉'
                   : 'Pedido retirado 🎉'
                 : isDelivery
-                  ? `Previsão de entrega ~${order.etaMinutes ?? RESTAURANT.avgPrepMinutes} min`
+                  ? deliveryStatus
                   : `Pronto para retirar em ~${RESTAURANT.avgPrepMinutes} min`}
             </p>
             <p className="flex items-center gap-1 text-xs text-cream-3">
@@ -184,9 +197,8 @@ export function OrderTracking() {
           </div>
         ) : (
           <ol className="relative space-y-5">
-            {ORDER_FLOW.filter((s) =>
-              isDelivery ? true : s !== 'on_the_way' && s !== 'arrived',
-            ).map((status) => {
+            {(isDelivery ? (['received','confirmed','accepted','at_restaurant','on_the_way','arrived','delivered'] as const)
+              : ORDER_FLOW.filter(s => s !== 'on_the_way' && s !== 'arrived')).map((status) => {
               const meta = ORDER_STATUS_META[status];
               const event = order.statusHistory.find((e) => e.status === status);
               const done = meta.step <= currentStep;

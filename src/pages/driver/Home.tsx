@@ -23,7 +23,7 @@ export function DriverHome() {
   const { driver, loading, refresh } = useDriver();
 
   const [available, setAvailable] = useState<Order[]>([]);
-  const [myActive, setMyActive] = useState<Order[]>([]);
+  const [myOrders, setMyOrders] = useState<Order[]>([]);
   const [accepting, setAccepting] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,11 +38,7 @@ export function DriverHome() {
   useEffect(() => {
     if (!profile) return;
     const unsub = repository.subscribeOrders((all) => {
-      setMyActive(
-        all.filter(
-          (o) => o.driverId === profile.id && o.status !== 'delivered' && o.status !== 'cancelled',
-        ),
-      );
+      setMyOrders(all.filter((o) => o.driverId === profile.id));
     });
     return unsub;
   }, [profile]);
@@ -57,7 +53,7 @@ export function DriverHome() {
     if (!profile) return;
     setAccepting(order.id);
     try {
-      await repository.assignDriver(order.id, profile.id);
+      await repository.updateOrderStatus(order.id, 'accepted');
       toast.success(`Entrega ${order.code} aceita!`);
       navigate(`/entregador/entrega/${order.id}`);
     } catch (err) {
@@ -80,7 +76,11 @@ export function DriverHome() {
     return <ApplicationStatus fallbackStatus={fallback} />;
   }
 
-  const todayEarnings = 0; // resumo rápido; detalhado em /ganhos
+  const myActive = myOrders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled');
+  const since = Date.now() - 86_400_000;
+  const todayEarnings = myOrders
+    .filter((o) => o.status === 'delivered' && new Date(o.createdAt).getTime() >= since)
+    .reduce((sum, o) => sum + o.deliveryFee, 0);
 
   return (
     <div className="space-y-5 px-4 pt-4">
@@ -198,6 +198,7 @@ export function DriverHome() {
                       variant="amber"
                       fullWidth
                       size="sm"
+                      disabled={myActive.length > 0}
                       loading={accepting === o.id}
                       onClick={() => accept(o)}
                     >

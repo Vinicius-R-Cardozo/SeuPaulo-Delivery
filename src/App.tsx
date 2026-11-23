@@ -1,4 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useLayoutEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 
 import { Landing } from '@/pages/Landing';
@@ -32,6 +34,12 @@ import { DriverProfile } from '@/pages/driver/DriverProfile';
 // (pasta admin/, publicado no Vercel). Cliente e entregador não o acessam.
 
 export function App() {
+  const { pathname } = useLocation();
+
+  useLayoutEffect(() => {
+    if (Capacitor.isNativePlatform()) window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [pathname]);
+
   return (
     <Routes>
       {/* Landing / escolha de ambiente */}

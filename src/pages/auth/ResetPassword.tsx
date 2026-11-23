@@ -1,21 +1,15 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Mail } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthShell } from '@/components/layout/AuthShell';
-import { Input } from '@/components/ui/Input';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { Button } from '@/components/ui/Button';
-import { repository, usingSupabase } from '@/services';
+import { repository } from '@/services';
 import { useToast } from '@/providers/ToastProvider';
-import { validateEmail, validatePassword } from '@/utils/validation';
+import { validatePassword } from '@/utils/validation';
 
 export function ResetPassword() {
   const toast = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
-  const presetEmail = (location.state as { email?: string } | null)?.email ?? '';
-
-  const [email, setEmail] = useState(presetEmail);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [errors, setErrors] = useState<Record<string, string | null>>({});
@@ -24,7 +18,6 @@ export function ResetPassword() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const next: Record<string, string | null> = {
-      email: usingSupabase ? null : validateEmail(email),
       password: validatePassword(password),
       confirm: password !== confirm ? 'As senhas não coincidem.' : null,
     };
@@ -32,7 +25,7 @@ export function ResetPassword() {
     if (Object.values(next).some(Boolean)) return;
     setLoading(true);
     try {
-      await repository.resetPassword(email, password);
+      await repository.resetPassword(password);
       toast.success('Senha redefinida! Faça login com a nova senha.');
       navigate('/login', { replace: true });
     } catch (err) {
@@ -54,17 +47,6 @@ export function ResetPassword() {
       }
     >
       <form onSubmit={submit} className="space-y-4" noValidate>
-        {!usingSupabase && (
-          <Input
-            label="E-mail da conta"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={errors.email}
-            leftIcon={<Mail size={16} />}
-            autoComplete="email"
-          />
-        )}
         <PasswordField
           label="Nova senha"
           value={password}

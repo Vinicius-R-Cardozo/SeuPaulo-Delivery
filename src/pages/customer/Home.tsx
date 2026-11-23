@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ArrowRight, Flame } from 'lucide-react';
+import { Search, Flame } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMenu } from '@/hooks/useMenu';
 import { ProductCard } from '@/components/menu/ProductCard';
@@ -9,12 +9,11 @@ import { RESTAURANT } from '@/data/restaurant';
 export function Home() {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { categories, products, loading } = useMenu();
+  const { sections, products, loading } = useMenu();
 
   const firstName = profile?.fullName.split(' ')[0] ?? '';
-  const popular = products.filter((p) => p.popular).slice(0, 4);
-  const novidades = products.filter((p) => p.isNew).slice(0, 4);
-  const catList = categories.filter((c) => c.slug !== 'mais-pedidos');
+  const popular = products.filter((p) => p.available && p.popular).slice(0, 4);
+  const novidades = products.filter((p) => p.available && p.isNew).slice(0, 4);
 
   return (
     <div className="space-y-7 px-4 pt-4">
@@ -33,31 +32,13 @@ export function Home() {
         Buscar no cardápio…
       </button>
 
-      {/* Banner promo */}
-      <Link
-        to="/app/cardapio"
-        className="relative block overflow-hidden rounded-2xl"
-      >
-        <img src="/menu-comidas.jpg" alt="" className="h-40 w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/60 to-transparent" />
-        <div className="absolute inset-0 flex flex-col justify-center p-5">
-          <span className="badge w-fit bg-amber text-ink">🔥 Promoção</span>
-          <h2 className="display mt-2 max-w-[70%] text-2xl leading-tight text-cream">
-            Use BEMVINDO10 no 1º pedido
-          </h2>
-          <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-cream/80">
-            Ver cardápio <ArrowRight size={14} />
-          </span>
-        </div>
-      </Link>
-
       {/* Categorias */}
-      <div>
+      {sections.length > 0 && <div>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="display text-lg text-cream">Categorias</h2>
         </div>
         <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4">
-          {catList.map((c) => (
+          {sections.map(({ category: c }) => (
             <button
               key={c.id}
               onClick={() => navigate(`/app/cardapio?cat=${c.slug}`)}
@@ -68,10 +49,10 @@ export function Home() {
             </button>
           ))}
         </div>
-      </div>
+      </div>}
 
       {/* Mais pedidos */}
-      <section>
+      {(loading || popular.length > 0) && <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="display flex items-center gap-2 text-lg text-cream">
             <Flame size={18} className="text-brand-2" /> Mais pedidos
@@ -85,7 +66,7 @@ export function Home() {
             ? Array.from({ length: 3 }).map((_, i) => <ProductCardSkeleton key={i} />)
             : popular.map((p) => <ProductCard key={p.id} product={p} />)}
         </div>
-      </section>
+      </section>}
 
       {/* Novidades */}
       {novidades.length > 0 && (

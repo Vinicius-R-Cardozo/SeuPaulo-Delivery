@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   User,
@@ -11,9 +11,6 @@ import {
   ArrowRight,
   Bike,
   ShieldCheck,
-  Sun,
-  Glasses,
-  ScanFace,
   Pencil,
   CheckCircle2,
   Loader2,
@@ -28,7 +25,7 @@ import { PhotoCapture } from '@/components/onboarding/PhotoCapture';
 import type { CapturedMedia } from '@/components/onboarding/capture';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/providers/ToastProvider';
-import type { DeliveryVehicle, DocumentKind } from '@/types';
+import type { DeliveryVehicle, DriverRegistrationDocumentKind } from '@/types';
 import {
   formatCEP,
   formatCPF,
@@ -38,6 +35,7 @@ import {
   formatPlate,
 } from '@/utils/format';
 import {
+  MOTO_CNH_CATEGORIES,
   validateBirthDate,
   validateCEP,
   validateCnhExpiry,
@@ -50,7 +48,6 @@ import {
   validatePhone,
   validatePlate,
   validateRenavam,
-  validateRG,
   validateRequired,
   validateYear,
 } from '@/utils/validation';
@@ -59,10 +56,9 @@ import { cn } from '@/utils/cn';
 
 type Errors = Record<string, string | null>;
 
-const STEPS_BIKE = ['Tipo', 'Dados', 'Endereço', 'Identidade', 'Bicicleta', 'Revisão'];
-const STEPS_MOTO = ['Tipo', 'Dados', 'Endereço', 'Identidade', 'CNH', 'Moto', 'Revisão'];
-
-const CNH_CATEGORIES = ['A', 'AB', 'AC', 'AD', 'AE'].map((c) => ({ value: c, label: c }));
+const STEPS_BIKE = ['Tipo', 'Dados', 'Endereço', 'Selfie', 'Bicicleta', 'Revisão'];
+const STEPS_MOTO = ['Tipo', 'Dados', 'Endereço', 'Selfie', 'CNH', 'Moto', 'Revisão'];
+const CNH_OPTIONS = MOTO_CNH_CATEGORIES.map((category) => ({ value: category, label: category }));
 
 export function DriverRegister() {
   const { setProfile } = useAuth();
@@ -78,7 +74,6 @@ export function DriverRegister() {
   const [f, setF] = useState({
     fullName: '',
     cpf: '',
-    rg: '',
     birthDate: '',
     email: '',
     phone: '',
@@ -91,7 +86,7 @@ export function DriverRegister() {
     city: '',
     state: '',
     cnhNumber: '',
-    cnhCategory: 'AB',
+    cnhCategory: '',
     cnhExpiry: '',
     motoBrand: '',
     motoModel: '',
@@ -104,12 +99,13 @@ export function DriverRegister() {
     bikeModel: '',
     bikeColor: '',
   });
-  const [docs, setDocs] = useState<Partial<Record<DocumentKind, CapturedMedia>>>({});
+  const [docs, setDocs] = useState<Partial<Record<DriverRegistrationDocumentKind, CapturedMedia>>>({});
 
   const set = (k: keyof typeof f) => (v: string) => setF((s) => ({ ...s, [k]: v }));
-  const setDoc = (kind: DocumentKind) => (m: CapturedMedia) =>
-    setDocs((d) => ({ ...d, [kind]: m }));
+  const setDoc = (kind: DriverRegistrationDocumentKind) => (document: CapturedMedia) =>
+    setDocs((current) => ({ ...current, [kind]: document }));
 
+  const vehicleStep = vehicle === 'moto' ? 'Moto' : 'Bicicleta';
   const steps = vehicle === 'moto' ? STEPS_MOTO : STEPS_BIKE;
   const label = steps[step];
 
@@ -143,7 +139,6 @@ export function DriverRegister() {
     if (current === 'Dados') {
       e.fullName = validateFullName(f.fullName);
       e.cpf = validateCPF(f.cpf);
-      e.rg = validateRG(f.rg);
       e.birthDate = validateBirthDate(f.birthDate);
       e.email = validateEmail(f.email);
       e.phone = validatePhone(f.phone);
@@ -157,9 +152,8 @@ export function DriverRegister() {
       e.city = validateRequired(f.city, 'Cidade');
       e.state = validateRequired(f.state, 'Estado');
     }
-    if (current === 'Identidade') {
-      if (!docs.selfie) e.selfie = 'Faça sua selfie.';
-      if (!docs.id_document) e.id_document = 'Envie seu documento de identificação.';
+    if (current === 'Selfie' && !docs.selfie) {
+      e.selfie = 'Tire uma selfie para continuar.';
     }
     if (current === 'CNH') {
       e.cnhNumber = validateCnhNumber(f.cnhNumber);
@@ -175,9 +169,7 @@ export function DriverRegister() {
       e.motoColor = validateRequired(f.motoColor, 'Cor');
       e.motoPlate = validatePlate(f.motoPlate);
       e.motoRenavam = validateRenavam(f.motoRenavam);
-      if (!docs.vehicle_doc) e.vehicle_doc = 'Envie o documento do veículo.';
-      if (!docs.vehicle_photo) e.vehicle_photo = 'Envie a foto da moto.';
-      if (!docs.plate_photo) e.plate_photo = 'Envie a foto da placa.';
+      if (!docs.vehicle_doc) e.vehicle_doc = 'Envie o CRLV-e do veículo.';
     }
     if (current === 'Bicicleta') {
       e.bikeColor = validateRequired(f.bikeColor, 'Cor');
@@ -209,12 +201,11 @@ export function DriverRegister() {
   const submit = async () => {
     if (!vehicle) return;
     // Revalida tudo antes de enviar.
-    const allSteps = vehicle === 'moto' ? STEPS_MOTO : STEPS_BIKE;
-    for (const s of allSteps) {
+    for (const [index, s] of steps.entries()) {
       const e = validate(s);
       if (Object.values(e).some(Boolean)) {
         setErrors(e);
-        setStep(allSteps.indexOf(s));
+        setStep(index);
         toast.error('Revise os campos destacados antes de enviar.');
         return;
       }
@@ -222,13 +213,16 @@ export function DriverRegister() {
     setLoading(true);
     try {
       const { repository } = await import('@/services');
-      const documents = Object.values(docs).filter(Boolean) as CapturedMedia[];
+      const kinds: DriverRegistrationDocumentKind[] = vehicle === 'moto'
+        ? ['selfie', 'cnh_front', 'cnh_back', 'vehicle_doc']
+        : ['selfie', 'bike_photo'];
+      const documents = kinds.map((kind) => docs[kind])
+        .filter((document): document is CapturedMedia => document !== undefined);
       const { profile } = await repository.registerDriver({
         password: f.password,
         vehicle,
         fullName: f.fullName,
         cpf: f.cpf,
-        rg: f.rg,
         birthDate: f.birthDate,
         email: f.email,
         phone: f.phone,
@@ -241,10 +235,9 @@ export function DriverRegister() {
           city: f.city,
           state: f.state.toUpperCase(),
         },
-        cnh:
-          vehicle === 'moto'
-            ? { number: f.cnhNumber, category: f.cnhCategory, expiresAt: f.cnhExpiry }
-            : null,
+        cnh: vehicle === 'moto'
+          ? { number: f.cnhNumber, category: f.cnhCategory, expiresAt: f.cnhExpiry }
+          : null,
         moto:
           vehicle === 'moto'
             ? {
@@ -283,7 +276,7 @@ export function DriverRegister() {
     <AuthShell
       badge="Entregador"
       title="Cadastro de entregador"
-      subtitle="Um processo guiado, rapidinho. Seu cadastro passa por análise antes de liberar."
+      subtitle="Envie seus dados e os do veículo para análise."
       image="/canecas.jpg"
       footer={
         step === 0 ? (
@@ -308,14 +301,14 @@ export function DriverRegister() {
                 active={vehicle === 'bicicleta'}
                 emoji="🚲"
                 title="Bicicleta"
-                desc="Sem CNH. Identidade + dados da bike."
+                desc="Dados e foto da bicicleta."
                 onClick={() => setVehicle('bicicleta')}
               />
               <VehicleCard
                 active={vehicle === 'moto'}
                 emoji="🏍️"
                 title="Moto"
-                desc="CNH, documento e dados da moto."
+                desc="CNH, CRLV-e e dados da moto."
                 onClick={() => setVehicle('moto')}
               />
             </div>
@@ -334,23 +327,15 @@ export function DriverRegister() {
               leftIcon={<User size={16} />}
               autoComplete="name"
             />
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="CPF"
-                placeholder="000.000.000-00"
-                value={f.cpf}
-                onChange={(e) => set('cpf')(formatCPF(e.target.value))}
-                error={errors.cpf}
-                leftIcon={<IdCard size={16} />}
-                inputMode="numeric"
-              />
-              <Input
-                label="RG"
-                value={f.rg}
-                onChange={(e) => set('rg')(e.target.value)}
-                error={errors.rg}
-              />
-            </div>
+            <Input
+              label="CPF"
+              placeholder="000.000.000-00"
+              value={f.cpf}
+              onChange={(e) => set('cpf')(formatCPF(e.target.value))}
+              error={errors.cpf}
+              leftIcon={<IdCard size={16} />}
+              inputMode="numeric"
+            />
             <Input
               label="Data de nascimento"
               placeholder="DD/MM/AAAA"
@@ -448,48 +433,19 @@ export function DriverRegister() {
           </>
         )}
 
-        {/* ----------------------------- Identidade ----------------------------- */}
-        {label === 'Identidade' && (
-          <>
-            <div className="rounded-xl border border-amber/25 bg-amber/5 p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold text-cream">
-                <ScanFace size={16} className="text-amber" /> Vamos confirmar que é você
-              </p>
-              <ul className="mt-2 space-y-1 text-xs text-cream-3">
-                <li className="flex items-center gap-2"><Sun size={13} className="text-amber" /> Fique em um ambiente iluminado</li>
-                <li className="flex items-center gap-2"><Glasses size={13} className="text-amber" /> Não use óculos escuros</li>
-                <li className="flex items-center gap-2"><User size={13} className="text-amber" /> Rosto visível, só você na foto</li>
-                <li className="flex items-center gap-2"><ScanFace size={13} className="text-amber" /> Centralize o rosto na moldura</li>
-              </ul>
-            </div>
-            <PhotoCapture
-              kind="selfie"
-              mode="selfie"
-              label="Selfie"
-              hint="Usada para confirmar sua identidade."
-              value={docs.selfie}
-              onCapture={setDoc('selfie')}
-              allowUpload={false}
-            />
-            {errors.selfie && <p className="-mt-2 text-xs text-danger">{errors.selfie}</p>}
-            <PhotoCapture
-              kind="id_document"
-              mode="document"
-              label="Documento de identificação (RG ou CNH)"
-              hint="Foto nítida, sem cortes e sem reflexo."
-              value={docs.id_document}
-              onCapture={setDoc('id_document')}
-            />
-            {errors.id_document && <p className="-mt-2 text-xs text-danger">{errors.id_document}</p>}
-          </>
+        {label === 'Selfie' && (
+          <PhotoCaptureStep
+            kind="selfie"
+            label="Selfie"
+            hint="Enquadre seu rosto em um local bem iluminado."
+            value={docs.selfie}
+            onCapture={setDoc('selfie')}
+            error={errors.selfie}
+          />
         )}
 
-        {/* -------------------------------- CNH --------------------------------- */}
         {label === 'CNH' && (
           <>
-            <p className="text-sm text-cream-3">
-              Informe os dados da sua habilitação. A categoria precisa habilitar moto.
-            </p>
             <Input
               label="Número da CNH"
               value={f.cnhNumber}
@@ -503,7 +459,8 @@ export function DriverRegister() {
                 value={f.cnhCategory}
                 onChange={(e) => set('cnhCategory')(e.target.value)}
                 error={errors.cnhCategory}
-                options={CNH_CATEGORIES}
+                placeholder="Selecione"
+                options={CNH_OPTIONS}
               />
               <Input
                 label="Validade"
@@ -514,20 +471,20 @@ export function DriverRegister() {
                 inputMode="numeric"
               />
             </div>
-            <PhotoCapture
+            <PhotoCaptureStep
               kind="cnh_front"
               label="Foto da frente da CNH"
               value={docs.cnh_front}
               onCapture={setDoc('cnh_front')}
+              error={errors.cnh_front}
             />
-            {errors.cnh_front && <p className="-mt-2 text-xs text-danger">{errors.cnh_front}</p>}
-            <PhotoCapture
+            <PhotoCaptureStep
               kind="cnh_back"
               label="Foto do verso da CNH"
               value={docs.cnh_back}
               onCapture={setDoc('cnh_back')}
+              error={errors.cnh_back}
             />
-            {errors.cnh_back && <p className="-mt-2 text-xs text-danger">{errors.cnh_back}</p>}
           </>
         )}
 
@@ -553,12 +510,14 @@ export function DriverRegister() {
               error={errors.motoRenavam}
               inputMode="numeric"
             />
-            <PhotoCapture kind="vehicle_doc" label="Documento do veículo (CRLV)" value={docs.vehicle_doc} onCapture={setDoc('vehicle_doc')} />
-            {errors.vehicle_doc && <p className="-mt-2 text-xs text-danger">{errors.vehicle_doc}</p>}
-            <PhotoCapture kind="vehicle_photo" label="Foto da moto" value={docs.vehicle_photo} onCapture={setDoc('vehicle_photo')} />
-            {errors.vehicle_photo && <p className="-mt-2 text-xs text-danger">{errors.vehicle_photo}</p>}
-            <PhotoCapture kind="plate_photo" label="Foto da placa" value={docs.plate_photo} onCapture={setDoc('plate_photo')} />
-            {errors.plate_photo && <p className="-mt-2 text-xs text-danger">{errors.plate_photo}</p>}
+            <PhotoCaptureStep
+              kind="vehicle_doc"
+              label="CRLV-e do veículo"
+              hint="Você pode fotografar ou enviar uma imagem legível do documento."
+              value={docs.vehicle_doc}
+              onCapture={setDoc('vehicle_doc')}
+              error={errors.vehicle_doc}
+            />
           </>
         )}
 
@@ -580,8 +539,14 @@ export function DriverRegister() {
               <Input label="Modelo (opcional)" value={f.bikeModel} onChange={(e) => set('bikeModel')(e.target.value)} />
             </div>
             <Input label="Cor" placeholder="Preta" value={f.bikeColor} onChange={(e) => set('bikeColor')(e.target.value)} error={errors.bikeColor} />
-            <PhotoCapture kind="bike_photo" label="Foto da bicicleta" hint="Usada para conferência cadastral." value={docs.bike_photo} onCapture={setDoc('bike_photo')} />
-            {errors.bike_photo && <p className="-mt-2 text-xs text-danger">{errors.bike_photo}</p>}
+            <PhotoCaptureStep
+              kind="bike_photo"
+              label="Foto da bicicleta"
+              hint="Usada para conferência cadastral."
+              value={docs.bike_photo}
+              onCapture={setDoc('bike_photo')}
+              error={errors.bike_photo}
+            />
           </>
         )}
 
@@ -615,37 +580,37 @@ export function DriverRegister() {
               <ReviewRow k="Veículo" v={vehicle === 'moto' ? '🏍️ Moto' : '🚲 Bicicleta'} />
             </ReviewSection>
 
+            <ReviewSection title="Selfie" onEdit={() => goTo(steps.indexOf('Selfie'))}>
+              <DocCheck label="Selfie capturada" ok={!!docs.selfie} />
+            </ReviewSection>
+
+            {vehicle === 'moto' && (
+              <ReviewSection title="CNH" onEdit={() => goTo(steps.indexOf('CNH'))}>
+                <ReviewRow k="Número" v={f.cnhNumber} />
+                <ReviewRow k="Categoria" v={f.cnhCategory} />
+                <ReviewRow k="Validade" v={f.cnhExpiry} />
+                <DocCheck label="Fotos da frente e do verso" ok={!!docs.cnh_front && !!docs.cnh_back} />
+              </ReviewSection>
+            )}
+
             {vehicle === 'moto' ? (
-              <>
-                <ReviewSection title="CNH" onEdit={() => goTo(steps.indexOf('CNH'))}>
-                  <ReviewRow k="Número" v={f.cnhNumber} />
-                  <ReviewRow k="Categoria" v={f.cnhCategory} />
-                  <ReviewRow k="Validade" v={f.cnhExpiry} />
-                </ReviewSection>
-                <ReviewSection title="Moto" onEdit={() => goTo(steps.indexOf('Moto'))}>
-                  <ReviewRow k="Veículo" v={`${f.motoBrand} ${f.motoModel} ${f.motoYear}`} />
-                  <ReviewRow k="Cor / Placa" v={`${f.motoColor} · ${formatPlate(f.motoPlate)}`} />
-                </ReviewSection>
-              </>
+              <ReviewSection title="Moto" onEdit={() => goTo(steps.indexOf(vehicleStep))}>
+                <ReviewRow k="Veículo" v={`${f.motoBrand} ${f.motoModel} ${f.motoYear}`} />
+                <ReviewRow k="Cor / Placa" v={`${f.motoColor} · ${formatPlate(f.motoPlate)}`} />
+                <DocCheck label="CRLV-e do veículo" ok={!!docs.vehicle_doc} />
+              </ReviewSection>
             ) : (
-              <ReviewSection title="Bicicleta" onEdit={() => goTo(steps.indexOf('Bicicleta'))}>
+              <ReviewSection title="Bicicleta" onEdit={() => goTo(steps.indexOf(vehicleStep))}>
                 <ReviewRow k="Tipo" v={f.bikeKind === 'eletrica' ? 'Elétrica' : 'Convencional'} />
                 <ReviewRow k="Cor" v={f.bikeColor} />
               </ReviewSection>
             )}
 
-            <ReviewSection title="Documentação" onEdit={() => goTo(steps.indexOf('Identidade'))}>
-              <DocCheck label="Selfie" ok={!!docs.selfie} />
-              <DocCheck label="Documento de identidade" ok={!!docs.id_document} />
-              {vehicle === 'moto' && (
-                <>
-                  <DocCheck label="CNH (frente e verso)" ok={!!docs.cnh_front && !!docs.cnh_back} />
-                  <DocCheck label="Documento do veículo" ok={!!docs.vehicle_doc} />
-                  <DocCheck label="Fotos da moto e placa" ok={!!docs.vehicle_photo && !!docs.plate_photo} />
-                </>
-              )}
-              {vehicle === 'bicicleta' && <DocCheck label="Foto da bicicleta" ok={!!docs.bike_photo} />}
-            </ReviewSection>
+            {vehicle === 'bicicleta' && (
+              <ReviewSection title="Arquivos do veículo" onEdit={() => goTo(steps.indexOf(vehicleStep))}>
+                <DocCheck label="Foto da bicicleta" ok={!!docs.bike_photo} />
+              </ReviewSection>
+            )}
           </div>
         )}
       </div>
@@ -670,6 +635,15 @@ export function DriverRegister() {
 }
 
 /* ------------------------------ Subcomponentes ----------------------------- */
+
+function PhotoCaptureStep({ error, ...props }: ComponentProps<typeof PhotoCapture> & { error?: string | null }) {
+  return (
+    <>
+      <PhotoCapture {...props} />
+      {error && <p className="-mt-2 text-xs text-danger" role="alert">{error}</p>}
+    </>
+  );
+}
 
 function VehicleCard({
   active,

@@ -12,10 +12,9 @@ import { FullScreenLoader } from '@/components/ui/Spinner';
 import { formatBRL } from '@/utils/format';
 import { RESTAURANT } from '@/data/restaurant';
 import { PAYMENT_STATUS_META } from '@/utils/status';
+import { prepareTracking, startTracking, stopTracking } from '@/services/deliveryTracking';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/utils/cn';
-
-/** Etapas locais antes do despacho; depois o status do pedido comanda. */
-type PrePhase = 'to_restaurant' | 'picking_up';
 
 export function ActiveDelivery() {
   const { id } = useParams();
@@ -23,24 +22,33 @@ export function ActiveDelivery() {
   const toast = useToast();
   const { order, loading } = useOrder(id);
 
-  const [prePhase, setPrePhase] = useState<PrePhase>('to_restaurant');
+  const { profile } = useAuth();
+  const [gpsError, setGpsError] = useState('');
   const [working, setWorking] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Se recarregar já a caminho, pula as etapas iniciais.
-    if (order && (order.status === 'on_the_way' || order.status === 'arrived')) {
-      setPrePhase('picking_up');
+  const mine = !!profile && order?.driverId === profile.id;
+  const resume = async () => {
+    if (!order || !mine) return;
+    try {
+      await startTracking(order.id);
+      setGpsError('');
+    } catch {
+      setGpsError('Ative a localização para compartilhar o trajeto com o cliente.');
     }
-  }, [order]);
+  };
+  useEffect(() => {
+    if (mine && order?.status === 'on_the_way') void resume();
+    if (mine && order && ['arrived','delivered','cancelled'].includes(order.status)) void stopTracking(order.id);
+  }, [mine, order?.id, order?.status]);
 
   if (loading) return <FullScreenLoader />;
-  if (!order) {
+  if (!order || !mine || order.status === 'cancelled') {
     return (
       <div className="p-6 text-center text-cream-3">
-        Pedido não encontrado.
+        Entrega indisponível.
         <div className="mt-4">
           <Button onClick={() => navigate('/entregador')}>Voltar</Button>
         </div>
@@ -59,13 +67,15 @@ export function ActiveDelivery() {
         ? 'arrived'
         : order.status === 'on_the_way'
           ? 'delivering'
-          : prePhase;
+          : order.status === 'at_restaurant' ? 'picking_up' : 'to_restaurant';
 
-  const startDelivery = async () => {
+  const advance = async (status: 'at_restaurant' | 'on_the_way') => {
     setWorking(true);
     try {
-      await repository.updateOrderStatus(order.id, 'on_the_way');
-      toast.success('Entrega iniciada! Boa viagem 🛵');
+      if (status === 'on_the_way') await prepareTracking();
+      await repository.updateOrderStatus(order.id, status);
+      if (status === 'on_the_way') await resume();
+
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -77,6 +87,7 @@ export function ActiveDelivery() {
     setWorking(true);
     try {
       await repository.updateOrderStatus(order.id, 'arrived');
+      await stopTracking(order.id);
       toast.info('Cliente avisado. Peça o código de entrega. 🔔');
     } catch (err) {
       toast.error((err as Error).message);
@@ -87,7 +98,7 @@ export function ActiveDelivery() {
 
   const submitCode = async () => {
     const clean = code.replace(/\D/g, '');
-    if (clean.length < 4) {
+    if (clean.length !== 6) {
       setCodeError('Digite o código informado pelo cliente.');
       return;
     }
@@ -153,13 +164,15 @@ export function ActiveDelivery() {
         <h1 className="display text-xl text-cream">Entrega {order.code}</h1>
       </div>
 
+      {gpsError && stage === 'delivering' && <div className="mx-4 mb-3 text-sm text-amber" role="alert">
+        {gpsError} <button className="underline" onClick={() => void prepareTracking().then(resume).catch(() => setGpsError('Permita a localização nos ajustes do aparelho e tente de novo.'))}>Tentar novamente</button>
+      </div>}
       <div className="mx-4 mb-4 h-64 overflow-hidden rounded-2xl border border-ink-3">
         <DeliveryMap
           restaurant={RESTAURANT.location}
           customer={customer}
-          driver={order.driverLocation ?? RESTAURANT.location}
-          showRoute={dispatched}
-          fitKey={`${stage}-${order.driverLocation?.lat}`}
+          driver={order.driverLocation}
+          fitKey={stage}
         />
       </div>
 
@@ -227,7 +240,7 @@ export function ActiveDelivery() {
       </div>
 
       <div className="mx-4 mt-4 grid grid-cols-2 gap-3">
-        <Button variant="ghost" leftIcon={<Navigation size={16} />} onClick={openExternalNav}>
+        <Button variant="ghost" leftIcon={<Navigation size={16} />} disabled={working} onClick={openExternalNav}>
           Navegar
         </Button>
         <a href={`tel:${order.customerPhone.replace(/\D/g, '')}`}>
@@ -239,12 +252,12 @@ export function ActiveDelivery() {
 
       <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg border-t border-ink-3 bg-ink-2/95 p-4 backdrop-blur">
         {stage === 'to_restaurant' && (
-          <Button fullWidth size="lg" variant="amber" onClick={() => setPrePhase('picking_up')}>
+          <Button fullWidth size="lg" variant="amber" loading={working} onClick={() => advance('at_restaurant')}>
             Cheguei ao restaurante
           </Button>
         )}
         {stage === 'picking_up' && (
-          <Button fullWidth size="lg" variant="amber" loading={working} onClick={startDelivery}>
+          <Button fullWidth size="lg" variant="amber" loading={working} onClick={() => advance('on_the_way')}>
             Retirei o pedido · Iniciar entrega
           </Button>
         )}
@@ -289,6 +302,13 @@ export function ActiveDelivery() {
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
             error={codeError}
+            enterKeyHint="done"
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !working) {
+                e.currentTarget.blur();
+                void submitCode();
+              }
+            }}
             inputMode="numeric"
             placeholder="Ex.: 482731"
             leftIcon={<KeyRound size={16} />}

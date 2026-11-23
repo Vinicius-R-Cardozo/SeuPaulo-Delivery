@@ -46,7 +46,6 @@ export function VerifyEmail() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [devCode, setDevCode] = useState<string | null>(null);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Sem cadastro pendente (abriu a tela direto) → volta ao cadastro.
@@ -59,21 +58,6 @@ export function VerifyEmail() {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-
-  // Em desenvolvimento (backend mock), mostra o código na tela.
-  useEffect(() => {
-    if (!repository.backendName.toLowerCase().includes('mock')) return;
-    // Código já enviado antes desta tela montar (fica guardado no dev).
-    const stashed = (window as unknown as { __SPD_DEV_CODE?: { email: string; code: string } })
-      .__SPD_DEV_CODE;
-    if (stashed?.email?.toLowerCase() === email.toLowerCase()) setDevCode(stashed.code);
-    const onDev = (e: Event) => {
-      const detail = (e as CustomEvent<{ email: string; code: string }>).detail;
-      if (detail?.email?.toLowerCase() === email.toLowerCase()) setDevCode(detail.code);
-    };
-    window.addEventListener('spd:dev-code', onDev);
-    return () => window.removeEventListener('spd:dev-code', onDev);
-  }, [email]);
 
   const remainingMs = Math.max(0, expiresAt - now);
   const expired = expiresAt > 0 && remainingMs <= 0;
@@ -146,7 +130,6 @@ export function VerifyEmail() {
   const resend = async () => {
     setResending(true);
     setError(null);
-    setDevCode(null);
     try {
       const { expiresAt: exp } = await repository.resendCustomerCode(email);
       const ms = new Date(exp).getTime();
@@ -186,13 +169,6 @@ export function VerifyEmail() {
           <MailCheck size={18} className="shrink-0 text-brand-2" />
           <span>Digite o código que chegou no seu e-mail para ativar a conta.</span>
         </div>
-
-        {devCode && (
-          <div className="rounded-xl border border-amber/30 bg-amber/10 p-3 text-center text-sm text-cream">
-            <span className="text-cream-3">Código (modo de teste): </span>
-            <span className="font-mono text-lg font-bold tracking-widest text-amber">{devCode}</span>
-          </div>
-        )}
 
         {/* 6 campos */}
         <div className="flex justify-center gap-2" onPaste={onPaste}>
