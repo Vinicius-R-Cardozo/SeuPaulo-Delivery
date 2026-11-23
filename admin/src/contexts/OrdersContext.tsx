@@ -8,6 +8,7 @@ import {
 } from 'react';
 import type { Order } from '@/types';
 import { repository } from '@/services';
+import { getSupabase } from '@/services/supabase/client';
 import { useToast } from '@/providers/ToastProvider';
 import { playNewOrderChime, primeAudio } from '@/utils/sound';
 
@@ -21,7 +22,7 @@ const POLL_MS = 4000;
 const BASE_TITLE = 'Seu Paulo · Admin';
 
 /**
- * Alimenta o painel com os pedidos EM TEMPO REAL (polling a cada 4s) — sem
+ * Alimenta o painel com Realtime e uma consulta de reserva a cada 4s — sem
  * precisar recarregar a página. Ao detectar um novo pedido, toca um alerta
  * sonoro e mostra um aviso. Fica montado enquanto o admin está logado.
  */
@@ -39,7 +40,13 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     window.addEventListener('pointerdown', onGesture, { once: true });
 
     let active = true;
+    let loading = false;
+    let refreshAgain = false;
+    let titleTimer: number | undefined;
     const load = async () => {
+      if (!active) return;
+      if (loading) { refreshAgain = true; return; }
+      loading = true;
       try {
         const list = await repository.getAllOrders();
         if (!active) return;
@@ -59,21 +66,34 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
               `🔔 Novo pedido ${first.code}${novos.length > 1 ? ` e mais ${novos.length - 1}` : ''}!`,
             );
             document.title = `(${novos.length}) 🔔 Novo pedido! · ${BASE_TITLE}`;
-            window.setTimeout(() => {
+            window.clearTimeout(titleTimer);
+            titleTimer = window.setTimeout(() => {
               document.title = BASE_TITLE;
             }, 8000);
           }
         }
       } catch {
-        /* silencioso — tenta de novo no próximo ciclo */
+        // The next event or interval will retry.
+      } finally {
+        loading = false;
+        if (refreshAgain) { refreshAgain = false; void load(); }
       }
     };
 
+    const db = getSupabase();
+    const channel = db.channel('admin-orders-feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => void load())
+      .subscribe(status => { if (status === 'SUBSCRIBED') void load(); });
+    document.addEventListener('visibilitychange', load);
     void load();
     const timer = window.setInterval(load, POLL_MS);
     return () => {
       active = false;
       window.clearInterval(timer);
+      window.clearTimeout(titleTimer);
+      document.title = BASE_TITLE;
+      document.removeEventListener('visibilitychange', load);
+      void db.removeChannel(channel);
       window.removeEventListener('pointerdown', onGesture);
     };
   }, []);

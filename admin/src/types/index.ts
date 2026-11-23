@@ -266,7 +266,8 @@ export type ReviewAction =
   | 'auto_analysis'
   | 'approved'
   | 'rejected'
-  | 'resubmission_requested';
+  | 'resubmission_requested'
+  | 'resubmitted';
 
 export interface ReviewEvent {
   at: string;

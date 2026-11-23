@@ -260,7 +260,7 @@ function ApplicationDetail({
     let active = true;
     (async () => {
       const entries = await Promise.all(
-        app.documents.map(async (d) => [d.kind, (await repository.getDocumentUrl(d.path)) ?? ''] as const),
+        app.documents.map(async (d) => [d.path, (await repository.getDocumentUrl(d.path)) ?? ''] as const),
       );
       if (active) setDocUrls(Object.fromEntries(entries));
     })();
@@ -300,7 +300,7 @@ function ApplicationDetail({
 
   // Aprovado automaticamente e ainda aguardando a mini-aprovação do admin.
   const awaitingConfirm = app.status === 'approved' && !app.adminConfirmed;
-  // Sem mais ações: reprovado, ou aprovado E já confirmado pelo admin.
+  // O reenvio pode ser solicitado mesmo após uma reprovação.
   const done = app.status === 'rejected' || (app.status === 'approved' && app.adminConfirmed);
   const analysis = app.autoAnalysis;
 
@@ -494,15 +494,15 @@ function ApplicationDetail({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {app.documents.map((d) => (
               <a
-                key={d.kind}
-                href={docUrls[d.kind] || undefined}
+                key={d.path}
+                href={docUrls[d.path] || undefined}
                 target="_blank"
                 rel="noreferrer"
                 className="group overflow-hidden rounded-xl border border-ink-3 bg-ink-2"
               >
                 <div className="flex h-28 items-center justify-center bg-ink-3/40">
-                  {docUrls[d.kind] ? (
-                    <img src={docUrls[d.kind]} alt={DOC_LABEL[d.kind]} className="h-full w-full object-cover" />
+                  {docUrls[d.path] ? (
+                    <img src={docUrls[d.path]} alt={DOC_LABEL[d.kind]} className="h-full w-full object-cover" />
                   ) : (
                     <span className="text-cream-3">
                       {d.kind === 'selfie' ? <ScanFace size={22} /> : <FileText size={22} />}
@@ -579,6 +579,17 @@ function ApplicationDetail({
             ? '✅ Cadastro aprovado e confirmado.'
             : '🔴 Cadastro reprovado.'}
         </p>
+      )}
+
+      {app.status === 'rejected' && (
+        <Button
+          variant="ghost"
+          leftIcon={<RefreshCw size={16} />}
+          disabled={busy}
+          onClick={() => setReasonModal('request_resubmission')}
+        >
+          Solicitar reenvio
+        </Button>
       )}
 
       {/* Modal de motivo */}
@@ -662,7 +673,7 @@ function ReviewIcon({ action }: { action: ReviewEvent['action'] }) {
   const cls = 'mt-0.5 shrink-0';
   if (action === 'approved') return <ShieldCheck size={15} className={cn(cls, 'text-success')} />;
   if (action === 'rejected') return <CircleX size={15} className={cn(cls, 'text-danger')} />;
-  if (action === 'resubmission_requested') return <RefreshCw size={15} className={cn(cls, 'text-amber')} />;
+  if (action === 'resubmission_requested' || action === 'resubmitted') return <RefreshCw size={15} className={cn(cls, 'text-amber')} />;
   if (action === 'auto_analysis') return <Bot size={15} className={cn(cls, 'text-brand-2')} />;
   return <CircleDashed size={15} className={cn(cls, 'text-cream-3')} />;
 }
@@ -678,5 +689,6 @@ function reviewLabel(action: ReviewEvent['action']): string {
     approved: 'Cadastro aprovado',
     rejected: 'Cadastro reprovado',
     resubmission_requested: 'Reenvio solicitado',
+    resubmitted: 'Documentos reenviados',
   }[action];
 }
