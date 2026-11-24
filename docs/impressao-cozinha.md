@@ -4,6 +4,14 @@ Ao confirmar um pedido de entrega, o admin grava a comanda junto com a mudança 
 
 ## Configurar pelo painel
 
+### Homologação com impressora virtual
+
+Em um computador com Python e IP na rede do agente, execute `python -B kitchen/impressora_virtual.py --ip IP-DESTE-COMPUTADOR` na raiz do projeto. A porta TCP padrão é 9100. Para usar outra porta, acrescente `--porta 19100`. Abra `http://127.0.0.1:19101` nesse mesmo computador para ver as últimas 20 comandas recebidas enquanto o processo estiver ligado. O botão **Enviar teste local** exercita o receptor TCP sem criar um pedido.
+
+No ambiente de homologação, conecte o agente, escolha **Impressora exclusiva por IP**, salve o IP e a porta do simulador e clique em **Imprimir comanda de teste**. Confira **DELIVERY #TESTE** e a indicação de corte no visor. Para testar o aceite automático, habilite a impressão e confirme um delivery de homologação. A via deve chegar com o código do pedido. O teste físico de papel, corte e compartilhamento com o PDV continua sendo feito no restaurante.
+
+### Instalação e ativação
+
 Publique as migrações `20261124163031_kitchen_delivery_print` e `20261124164011_kitchen_printer_admin` e a versão correspondente do admin. O instalador Windows x64 é servido pelo próprio painel.
 
 1. No painel do Seu Paulo, abra **Impressora** e digite a senha de configuração. O administrador precisa desbloquear a tela a cada entrada. O acesso expira após 15 minutos e cinco erros bloqueiam novas tentativas por dez minutos para aquela conta.
@@ -40,6 +48,7 @@ Para migrar uma instalação anterior, use o mesmo fluxo. Gerar o código manté
 
 ## Operação
 
+- Em **Pedidos**, **Comanda atrasada** aparece após 30 segundos na fila ou na primeira falha de conexão anterior ao envio. **Conferir na cozinha** indica que a comanda pode ter saído. Clique no código para abrir o pedido. Os avisos consultam a última via de cada delivery em andamento e se atualizam a cada quatro segundos.
 - **Na fila da cozinha** indica que o pedido está salvo. Se persistir, confira a conexão e a tarefa `Seu Paulo - Comandas da cozinha`. A falta de internet ou de energia no computador atrasa a impressão. Ao voltar, o agente busca os trabalhos pendentes de pedidos ainda ativos.
 - **Enviada à impressora** indica aceite dos bytes pelo destino local. Em uma fila Windows, a bobina pode acabar depois do aceite. Confira o spooler e o papel antes de pedir outra via.
 - **Confira na cozinha** aparece após falha durante o envio ou após dois minutos sem confirmação do agente. A via original sai da repetição automática. Após conferir o papel, o atendente pode solicitar **Reimprimir comanda** no detalhe do pedido. A segunda via é identificada no papel.

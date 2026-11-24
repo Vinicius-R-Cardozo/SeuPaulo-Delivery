@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bike, Clock3, MapPin, Search, Store } from 'lucide-react';
+import { Bike, Clock3, MapPin, Printer, Search, Store } from 'lucide-react';
+import { useKitchenOrderAlerts } from '@/hooks/useKitchenOrderAlerts';
 import { useOrdersFeed } from '@/contexts/OrdersContext';
 import { repository } from '@/services';
 import { useToast } from '@/providers/ToastProvider';
@@ -22,6 +23,7 @@ const labels: Partial<Record<OrderStatus, string>> = {
   confirmed: 'Confirmar pedido', preparing: 'Iniciar preparo', ready: 'Marcar como pronto', delivered: 'Confirmar retirada',
 };
 const payment = { pix: 'Pix', cash: 'Dinheiro', card: 'Cartão' };
+const kitchenLabels = { delayed: 'Comanda atrasada', review: 'Conferir na cozinha' };
 
 function statusText(order: Order) {
   if (order.fulfillment === 'pickup' && order.status === 'ready') return 'Pronto para retirada';
@@ -34,6 +36,8 @@ function statusText(order: Order) {
 
 export function AdminOrders() {
   const { orders, loading } = useOrdersFeed();
+  const { alerts, unavailable } = useKitchenOrderAlerts();
+  const alertByOrder = new Map(alerts.map(alert => [alert.order_id, alert.kind]));
   const toast = useToast();
   const [history, setHistory] = useState(false);
   const [search, setSearch] = useState('');
@@ -106,6 +110,17 @@ export function AdminOrders() {
           {newCount} aguardando confirmação
         </div>
       </header>
+      {unavailable && <p role="status" className="text-sm text-amber">Falha ao atualizar os avisos da cozinha. Tentando novamente…</p>}
+      {alerts.length > 0 && <section aria-label="Avisos da cozinha" className="space-y-2 rounded-xl border border-amber/50 bg-ink-2 p-3.5">
+        <h2 className="flex items-center gap-2 text-sm font-bold text-amber"><Printer size={16} /> Avisos da cozinha</h2>
+        <div className="flex flex-wrap gap-2">
+          {alerts.map(alert => <button key={alert.order_id} type="button"
+            className="rounded-md border border-ink-5 px-2 py-1.5 text-left text-xs hover:border-amber"
+            onClick={() => { setHistory(false); setSearch(alert.code); setType(''); setSelectedId(alert.order_id); }}>
+            <strong>{alert.code}</strong> · {kitchenLabels[alert.kind]}
+          </button>)}
+        </div>
+      </section>}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div aria-label="Visualização de pedidos" className="flex gap-1 rounded-lg border border-ink-4 bg-ink-2 p-1">
           {[false,true].map(value => (
@@ -141,6 +156,7 @@ export function AdminOrders() {
                   {group.orders.length === 0 && <p className="p-2 text-xs text-cream-3">Nenhum pedido nesta etapa.</p>}
                   {group.orders.map(order => {
                     const next = nextStatus(order.status, order.fulfillment);
+                    const kitchenAlert = alertByOrder.get(order.id);
                     return (
                       <article key={order.id} className={cn('rounded-lg border p-3',
                         selected?.id === order.id ? 'border-brand-2/75 bg-brand/10' : 'border-ink-4 bg-ink-2')}>
@@ -154,6 +170,9 @@ export function AdminOrders() {
                             <span className="rounded border border-ink-5 px-1.5 py-0.5 text-cream-3">{order.fulfillment === 'delivery' ? 'Entrega' : 'Retirada'}</span>
                             <strong>{formatBRL(order.total)}</strong></span>
                           <span className={cn('block text-xs font-medium',group.key === 'road' ? 'text-success' : 'text-amber')}>{statusText(order)}</span>
+                          {kitchenAlert && <span className="flex items-center gap-1.5 text-xs font-bold text-amber">
+                            <Printer size={14} /> {kitchenLabels[kitchenAlert]}
+                          </span>}
                         </button>
                         {next && <Button size="sm" fullWidth className="mt-3" variant={order.status === 'received' ? 'primary' : 'ghost'}
                           disabled={busy !== null && busy !== order.id} loading={busy === order.id} onClick={() => void advance(order)}>
