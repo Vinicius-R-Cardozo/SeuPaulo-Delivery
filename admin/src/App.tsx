@@ -4,6 +4,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout';
 import { AdminLogin } from '@/pages/admin/auth/AdminLogin';
 import { Dashboard } from '@/pages/admin/Dashboard';
 import { AdminOrders } from '@/pages/admin/Orders';
+import { KitchenPrinter } from '@/pages/admin/KitchenPrinter';
 import { MenuManager } from '@/pages/admin/MenuManager';
 import { AdminDrivers } from '@/pages/admin/Drivers';
 import { DriverApplications } from '@/pages/admin/DriverApplications';
@@ -23,6 +24,7 @@ export function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="pedidos" element={<AdminOrders />} />
+        <Route path="impressora" element={<KitchenPrinter />} />
         <Route path="cardapio" element={<MenuManager />} />
         <Route path="entregadores" element={<AdminDrivers />} />
         <Route path="solicitacoes" element={<DriverApplications />} />

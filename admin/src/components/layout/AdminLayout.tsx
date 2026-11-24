@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   ClipboardList,
+  Printer,
   UtensilsCrossed,
   Bike,
   UserPlus,
@@ -20,6 +21,7 @@ import { cn } from '@/utils/cn';
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/pedidos', label: 'Pedidos', icon: ClipboardList, end: false },
+  { to: '/impressora', label: 'Impressora', icon: Printer, end: false },
   { to: '/cardapio', label: 'Cardápio', icon: UtensilsCrossed, end: false },
   { to: '/entregadores', label: 'Entregadores', icon: Bike, end: false },
   { to: '/solicitacoes', label: 'Solicitações', icon: UserPlus, end: false },

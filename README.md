@@ -25,6 +25,7 @@ cardápio, carrinho, cupons, pagamento, acompanhamento de pedido e **acompanhame
 - **Painel admin**: dashboard com KPIs e gráfico, confirmação e cancelamento de pedidos, acompanhamento das entregas, CRUD de cardápio, aprovação de entregadores e lista de
   clientes.
 - **Notificações** in-app para cliente, entregador e admin.
+- **Comanda automática da cozinha** ao confirmar um delivery no admin. [Instalação e operação da impressora](docs/impressao-cozinha.md).
 
 ---
 

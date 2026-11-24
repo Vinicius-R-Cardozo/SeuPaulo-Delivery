@@ -6,6 +6,7 @@ import { useToast } from '@/providers/ToastProvider';
 import type { Driver, Order, OrderStatus, Profile } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { KitchenTicket } from '@/components/KitchenTicket';
 import { PaymentStatusBadge } from '@/components/ui/StatusBadge';
 import { formatBRL, formatDateTime } from '@/utils/format';
 import { nextStatus, ORDER_STATUS_META } from '@/utils/status';
@@ -217,6 +218,7 @@ function OrderDetails({ order, courier, busy, advance, cancel }: {
         <p className="mt-2 text-xs font-semibold text-amber">{statusText(order)}</p>
       </header>
       <div className="space-y-4 p-4 text-sm">
+        {delivery && order.status !== 'received' && <KitchenTicket orderId={order.id} closed={terminal(order)} />}
         <section>
           <h3 className="mb-2 font-semibold">Itens do pedido</h3>
           <ul className="space-y-2">
