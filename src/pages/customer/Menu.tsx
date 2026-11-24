@@ -25,7 +25,6 @@ export function Menu() {
 
   const goToCat = (slug: CategorySlug | 'todos') => {
     setParams(slug === 'todos' ? {} : { cat: slug });
-    window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
   return (
@@ -54,7 +53,7 @@ export function Menu() {
 
       {/* Abas de categoria */}
       {sections.length > 0 && (
-        <div className="no-scrollbar sticky top-[57px] z-20 mt-3 flex gap-2 overflow-x-auto border-b border-ink-3 bg-ink/90 px-4 py-2.5 backdrop-blur">
+        <div className="no-scrollbar sticky top-0 z-20 mt-3 flex gap-2 overflow-x-auto border-b border-ink-3 bg-ink/90 px-4 py-2.5 backdrop-blur">
           <Chip active={active === 'todos'} onClick={() => goToCat('todos')}>
             Todos
           </Chip>

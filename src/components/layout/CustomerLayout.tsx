@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, UtensilsCrossed, ReceiptText, User, MapPin, ChevronDown, ShoppingBag } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { followCustomerOrders } from '@/services/orderLive';
@@ -8,6 +8,8 @@ import { useCart } from '@/contexts/CartContext';
 import { repository } from '@/services';
 import type { Address } from '@/types';
 import { NotificationBell } from './NotificationBell';
+import { AppTabBar, useTabIndex } from './AppTabBar';
+import { AppContent } from './AppContent';
 import { cn } from '@/utils/cn';
 
 const NAV = [
@@ -22,6 +24,7 @@ export function CustomerLayout() {
   const { itemCount } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
+  const tabIndex = useTabIndex(NAV);
   const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
 
   useEffect(() => {
@@ -39,12 +42,12 @@ export function CustomerLayout() {
   const hasCheckoutFooter = /^\/app\/(carrinho|checkout)(\/|$)/.test(location.pathname);
   const hasProductFooter = /^\/app\/produto\//.test(location.pathname);
   const hideTabBar = Capacitor.isNativePlatform() && (hasCheckoutFooter || hasProductFooter);
-  const hideCartFab = hasCheckoutFooter || hideTabBar;
+  const showCartFab = itemCount > 0 && !hasCheckoutFooter && !hideTabBar;
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-lg flex-col bg-ink">
+    <div className={cn('app-shell', !hideTabBar && 'app-with-tabs', showCartFab && 'app-with-cart')}>
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-ink-3 bg-ink/90 backdrop-blur">
+      <header className="relative z-30 shrink-0 border-b border-ink-3 bg-ink/90 backdrop-blur">
         <div className="flex items-center gap-3 px-4 py-3">
           <button
             onClick={() => navigate('/app/enderecos')}
@@ -70,16 +73,13 @@ export function CustomerLayout() {
       </header>
 
       {/* Conteúdo */}
-      <main className={cn('flex-1', !hideTabBar && 'app-content-with-tabs')}>
-        <Outlet />
-      </main>
+      <AppContent tabIndex={tabIndex} />
 
       {/* Botão flutuante do carrinho */}
-      {itemCount > 0 && !hideCartFab && (
+      {showCartFab && (
         <Link
           to="/app/carrinho"
-          className="app-cart-fab animate-in fixed inset-x-0 z-40 mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl bg-brand px-5 py-3.5 shadow-boteco"
-          style={{ width: 'calc(100% - 2rem)' }}
+          className="app-cart-fab animate-in absolute inset-x-4 z-40 flex items-center justify-between gap-3 rounded-xl bg-brand px-5 py-3.5 shadow-boteco"
         >
           <span className="flex items-center gap-2 text-cream">
             <ShoppingBag size={18} />
@@ -92,26 +92,7 @@ export function CustomerLayout() {
       )}
 
       {/* Bottom nav */}
-      {!hideTabBar && <nav aria-label="Navegação do cliente" className="app-tab-bar safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto max-w-lg border-t border-ink-3 bg-ink-2/95 backdrop-blur">
-        <div className="grid grid-cols-4">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  'flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors',
-                  isActive ? 'text-brand-2' : 'text-cream-3 hover:text-cream',
-                )
-              }
-            >
-              <Icon size={20} />
-              {label}
-            </NavLink>
-          ))}
-        </div>
-      </nav>}
+      {!hideTabBar && <AppTabBar tabs={NAV} selected={tabIndex} label="Navegação do cliente" />}
     </div>
   );
 }

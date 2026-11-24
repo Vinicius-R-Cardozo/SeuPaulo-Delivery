@@ -250,7 +250,7 @@ export function ActiveDelivery() {
         </a>
       </div>
 
-      <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg border-t border-ink-3 bg-ink-2/95 p-4 backdrop-blur">
+      <div className="app-action-footer safe-bottom fixed inset-x-0 z-40 mx-auto max-w-lg border-t border-ink-3 bg-ink-2/95 p-4 backdrop-blur">
         {stage === 'to_restaurant' && (
           <Button fullWidth size="lg" variant="amber" loading={working} onClick={() => advance('at_restaurant')}>
             Cheguei ao restaurante

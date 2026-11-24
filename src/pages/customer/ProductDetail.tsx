@@ -193,7 +193,7 @@ export function ProductDetail() {
       </div>
 
       {/* Barra fixa de adicionar */}
-      <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg border-t border-ink-3 bg-ink-2/95 p-4 backdrop-blur">
+      <div className="app-action-footer safe-bottom fixed inset-x-0 z-40 mx-auto max-w-lg border-t border-ink-3 bg-ink-2/95 p-4 backdrop-blur">
         <Button fullWidth size="lg" onClick={add} disabled={!product.available}>
           Adicionar · {formatBRL(total)}
         </Button>

@@ -280,7 +280,7 @@ export function Checkout() {
       </div>
 
       {/* Resumo + confirmar */}
-      <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg space-y-2 border-t border-ink-3 bg-ink-2/95 p-4 backdrop-blur">
+      <div className="app-action-footer safe-bottom fixed inset-x-0 z-40 mx-auto max-w-lg space-y-2 border-t border-ink-3 bg-ink-2/95 p-4 backdrop-blur">
         <div className="space-y-1 text-sm">
           <SummaryRow label="Subtotal" value={formatBRL(subtotal)} />
           {discount > 0 && (

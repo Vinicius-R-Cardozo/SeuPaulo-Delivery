@@ -140,7 +140,7 @@ export function Cart() {
       </div>
 
       {/* Resumo fixo */}
-      <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg space-y-3 border-t border-ink-3 bg-ink-2/95 p-4 backdrop-blur">
+      <div className="app-action-footer safe-bottom fixed inset-x-0 z-40 mx-auto max-w-lg space-y-3 border-t border-ink-3 bg-ink-2/95 p-4 backdrop-blur">
         <div className="space-y-1.5 text-sm">
           <Row label="Subtotal" value={formatBRL(subtotal)} />
           {discount > 0 && (

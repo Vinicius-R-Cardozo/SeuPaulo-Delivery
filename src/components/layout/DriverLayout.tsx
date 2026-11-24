@@ -3,10 +3,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { repository } from '@/services';
 import { startTracking } from '@/services/deliveryTracking';
 import { Capacitor } from '@capacitor/core';
-import { NavLink, Outlet, useMatch } from 'react-router-dom';
+import { useMatch } from 'react-router-dom';
 import { LayoutGrid, Wallet, History, User } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { NotificationBell } from './NotificationBell';
+import { AppTabBar, useTabIndex } from './AppTabBar';
+import { AppContent } from './AppContent';
 import { cn } from '@/utils/cn';
 
 const NAV = [
@@ -18,6 +20,7 @@ const NAV = [
 
 export function DriverLayout() {
   const { profile } = useAuth();
+  const tabIndex = useTabIndex(NAV);
   useEffect(() => {
     if (!profile) return;
     let active = true;
@@ -37,8 +40,8 @@ export function DriverLayout() {
   const hideTabBar = Capacitor.isNativePlatform() && Boolean(delivery);
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-lg flex-col bg-ink">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink-3 bg-ink/90 px-4 py-3 backdrop-blur">
+    <div className={cn('app-shell', !hideTabBar && 'app-with-tabs', 'app-driver')}>
+      <header className="relative z-30 shrink-0 flex items-center justify-between border-b border-ink-3 bg-ink/90 px-4 py-3 backdrop-blur">
         <Logo size="sm" light={Capacitor.isNativePlatform()} />
         <span className="ml-auto mr-1 rounded-full bg-amber/15 px-2.5 py-1 text-[11px] font-semibold text-amber">
           Entregador
@@ -46,30 +49,9 @@ export function DriverLayout() {
         <NotificationBell />
       </header>
 
-      <main className={cn('flex-1', !hideTabBar && 'app-content-with-tabs')}>
-        <Outlet />
-      </main>
+      <AppContent tabIndex={tabIndex} />
 
-      {!hideTabBar && <nav aria-label="Navegação do entregador" className="app-tab-bar safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto max-w-lg border-t border-ink-3 bg-ink-2/95 backdrop-blur">
-        <div className="grid grid-cols-4">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  'flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors',
-                  isActive ? 'text-amber' : 'text-cream-3 hover:text-cream',
-                )
-              }
-            >
-              <Icon size={20} />
-              {label}
-            </NavLink>
-          ))}
-        </div>
-      </nav>}
+      {!hideTabBar && <AppTabBar tabs={NAV} selected={tabIndex} label="Navegação do entregador" />}
     </div>
   );
 }
