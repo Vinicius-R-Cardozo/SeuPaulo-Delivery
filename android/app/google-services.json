@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "225599206096",
+    "project_id": "blaus-tech",
+    "storage_bucket": "blaus-tech.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:225599206096:android:7c90a541e95cb8b111e4d5",
+        "android_client_info": {
+          "package_name": "com.seupaulo.delivery"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBArrI3d_WLdxnNeS2a_IqHa0my4Wr1Rok"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
