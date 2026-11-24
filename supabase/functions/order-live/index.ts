@@ -12,6 +12,7 @@ type Alert = {
   event_id: string; expires_at: string; lease: string;
 };
 type Result = 'sent' | 'retry' | 'invalid';
+type Provider = 'apple' | 'apple-production' | 'google';
 const tokens = new Map<string, { value: string; until: number }>();
 const inflight = new Map<string, Promise<string>>();
 
@@ -21,7 +22,12 @@ function env(key: string) {
   return value;
 }
 
-async function credential(provider: 'apple' | 'google') {
+// Builds do TestFlight/App Store usam a chave de produção quando ela estiver configurada.
+function appleProvider(platform: Job['platform']): Provider {
+  return platform === 'ios-sandbox' ? 'apple' : 'apple-production';
+}
+
+async function credential(provider: Provider) {
   const cached = tokens.get(provider);
   if (cached && cached.until > Date.now()) return cached.value;
   const existing = inflight.get(provider);
@@ -34,10 +40,12 @@ async function credential(provider: 'apple' | 'google') {
   return fresh;
 }
 
-async function issue(provider: 'apple' | 'google') {
-  if (provider === 'apple') {
-    const key = await importPKCS8(env('ORDER_APNS_PRIVATE_KEY').replaceAll('\\n','\n'), 'ES256');
-    return new SignJWT({}).setProtectedHeader({ alg: 'ES256', kid: env('ORDER_APNS_KEY_ID') })
+async function issue(provider: Provider) {
+  if (provider !== 'google') {
+    const prefix = provider === 'apple-production' && Deno.env.get('ORDER_APNS_PRODUCTION_PRIVATE_KEY')?.trim()
+      ? 'ORDER_APNS_PRODUCTION_' : 'ORDER_APNS_';
+    const key = await importPKCS8(env(prefix + 'PRIVATE_KEY').replaceAll('\\n','\n'), 'ES256');
+    return new SignJWT({}).setProtectedHeader({ alg: 'ES256', kid: env(prefix + 'KEY_ID') })
       .setIssuedAt().setIssuer(env('ORDER_APNS_TEAM_ID')).sign(key);
   }
   const service = JSON.parse(env('ORDER_FCM_SERVICE_ACCOUNT'));
@@ -71,7 +79,7 @@ async function send(job: Job): Promise<Result> {
   const now = Math.floor(Date.now()/1000);
   const response = await fetch('https://' + server + '/3/device/' + encodeURIComponent(token), {
     method: 'POST', signal: AbortSignal.timeout(12000),
-    headers: { authorization: 'bearer ' + await credential('apple'), 'apns-push-type': 'liveactivity',
+    headers: { authorization: 'bearer ' + await credential(appleProvider(job.platform)), 'apns-push-type': 'liveactivity',
       'apns-topic': 'com.seupaulo.delivery.push-type.liveactivity', 'apns-priority': state.terminal || state.step === 6 ? '10' : '5',
       'apns-expiration': String(now + (state.terminal ? 86400 : 300)), 'apns-collapse-id': state.orderId },
     body: JSON.stringify({ aps: { timestamp: now, event: state.terminal ? 'end' : 'update',
@@ -79,7 +87,7 @@ async function send(job: Job): Promise<Result> {
   });
   if (response.ok) return 'sent';
   const error = await response.json();
-  if (error.reason === 'ExpiredProviderToken') tokens.delete('apple');
+  if (error.reason === 'ExpiredProviderToken') tokens.delete(appleProvider(job.platform));
   return response.status === 410 || error.reason === 'BadDeviceToken' ? 'invalid' : 'retry';
 }
 
@@ -103,7 +111,7 @@ async function sendAlert(job: Alert): Promise<Result> {
   const server = job.platform === 'ios-sandbox' ? 'api.sandbox.push.apple.com' : 'api.push.apple.com';
   const response = await fetch('https://' + server + '/3/device/' + encodeURIComponent(job.token), {
     method: 'POST', signal: AbortSignal.timeout(12000),
-    headers: { authorization: 'bearer ' + await credential('apple'), 'apns-push-type': 'alert',
+    headers: { authorization: 'bearer ' + await credential(appleProvider(job.platform)), 'apns-push-type': 'alert',
       'apns-topic': 'com.seupaulo.delivery', 'apns-priority': '10',
       'apns-expiration': String(expires), 'apns-collapse-id': job.event_id },
     body: JSON.stringify({ aps: { alert: { title: job.title, body: job.body }, sound: 'default' },
@@ -111,7 +119,7 @@ async function sendAlert(job: Alert): Promise<Result> {
   });
   if (response.ok) return 'sent';
   const error = await response.json();
-  if (error.reason === 'ExpiredProviderToken') tokens.delete('apple');
+  if (error.reason === 'ExpiredProviderToken') tokens.delete(appleProvider(job.platform));
   return response.status === 410 || error.reason === 'BadDeviceToken' ? 'invalid' : 'retry';
 }
 
