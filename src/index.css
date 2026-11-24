@@ -44,6 +44,7 @@
 
 @layer base {
   :root {
+    --app-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
     --focus-ring: #d9a441;
     --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
     color-scheme: dark;
@@ -65,6 +66,15 @@
     overflow-x: clip;
     touch-action: manipulation;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* Keep native screens and sticky headers below the iPhone status bar. */
+  html.native-app body {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  html.native-app {
+    --app-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem);
   }
 
   ::selection {
@@ -260,6 +270,14 @@
 }
 
 @layer utilities {
+  html.native-app .sticky.top-0 {
+    top: env(safe-area-inset-top, 0px);
+  }
+  html.native-app .min-h-dvh,
+  html.native-app .min-h-screen,
+  html.native-app .app-welcome {
+    min-height: calc(100dvh - env(safe-area-inset-top, 0px));
+  }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -268,7 +286,19 @@
     scrollbar-width: none;
   }
   .safe-bottom {
-    padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
+    padding-bottom: var(--app-safe-bottom);
+  }
+  .app-content-with-tabs {
+    padding-bottom: calc(3.5rem + var(--app-safe-bottom) + 1rem);
+  }
+  .app-cart-fab {
+    bottom: calc(3.5rem + var(--app-safe-bottom) + 0.5rem);
+  }
+  .native-app .pb-40 {
+    padding-bottom: calc(10rem + var(--app-safe-bottom));
+  }
+  .native-app .pb-32 {
+    padding-bottom: calc(8rem + var(--app-safe-bottom));
   }
   .animate-in {
     animation: fade-in-up 0.4s var(--ease-out-soft) both;

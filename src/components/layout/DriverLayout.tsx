@@ -46,7 +46,7 @@ export function DriverLayout() {
         <NotificationBell />
       </header>
 
-      <main className={cn('flex-1', !hideTabBar && 'pb-20')}>
+      <main className={cn('flex-1', !hideTabBar && 'app-content-with-tabs')}>
         <Outlet />
       </main>
 

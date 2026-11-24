@@ -82,7 +82,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
 public final class AppPush: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "AppPush"
     public let jsName = "AppPush"
-    public let pluginMethods = ["state", "enable", "clear"].map { CAPPluginMethod(name: $0, returnType: CAPPluginReturnPromise) }
+    public let pluginMethods: [CAPPluginMethod] = ["state", "enable", "clear"].compactMap { CAPPluginMethod(name: $0, returnType: CAPPluginReturnPromise) }
     private static weak var instance: AppPush?
     static var token: String?
     static var route: String?

@@ -39,16 +39,16 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="animate-in relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-ink-3 bg-ink-2 sm:rounded-2xl"
+        className="animate-in relative z-10 flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-ink-3 bg-ink-2 sm:rounded-2xl"
       >
-        <div className="flex items-center justify-between border-b border-ink-3 px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-ink-3 px-5 py-4">
           <h2 className="display text-lg text-cream">{title}</h2>
           <button onClick={onClose} className="text-cream-3 hover:text-cream" aria-label="Fechar">
             <X size={20} />
           </button>
         </div>
-        <div className="p-5">{children}</div>
-        {footer && <div className="border-t border-ink-3 p-5">{footer}</div>}
+        <div className="min-h-0 overflow-y-auto p-5">{children}</div>
+        {footer && <div className="safe-bottom shrink-0 border-t border-ink-3 p-5">{footer}</div>}
       </div>
     </div>
   );

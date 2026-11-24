@@ -6,7 +6,7 @@ import UIKit
 public class OrderLive: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "OrderLive"
     public let jsName = "OrderLive"
-    public let pluginMethods = ["known", "display", "clear"].map { CAPPluginMethod(name: $0, returnType: CAPPluginReturnPromise) }
+    public let pluginMethods: [CAPPluginMethod] = ["known", "display", "clear"].compactMap { CAPPluginMethod(name: $0, returnType: CAPPluginReturnPromise) }
     static var opened: String?
 
     @objc func known(_ call: CAPPluginCall) {

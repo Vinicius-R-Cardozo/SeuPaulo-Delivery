@@ -70,7 +70,7 @@ export function CustomerLayout() {
       </header>
 
       {/* Conteúdo */}
-      <main className={cn('flex-1', !hideTabBar && 'pb-24')}>
+      <main className={cn('flex-1', !hideTabBar && 'app-content-with-tabs')}>
         <Outlet />
       </main>
 
@@ -78,7 +78,7 @@ export function CustomerLayout() {
       {itemCount > 0 && !hideCartFab && (
         <Link
           to="/app/carrinho"
-          className="animate-in fixed inset-x-0 bottom-20 z-40 mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl bg-brand px-5 py-3.5 shadow-boteco"
+          className="app-cart-fab animate-in fixed inset-x-0 z-40 mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl bg-brand px-5 py-3.5 shadow-boteco"
           style={{ width: 'calc(100% - 2rem)' }}
         >
           <span className="flex items-center gap-2 text-cream">
