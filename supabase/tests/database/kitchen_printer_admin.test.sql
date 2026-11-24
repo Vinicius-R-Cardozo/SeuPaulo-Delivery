@@ -1,4 +1,9 @@
 begin;
+-- Match PostgREST on hosted Supabase; plain PostgreSQL test installations may lack the module.
+do $$ begin
+  load 'safeupdate';
+exception when undefined_file then null;
+end $$;
 select '1..1';
 do $$
 declare actor uuid:=gen_random_uuid(); sid uuid:=gen_random_uuid(); grant_key text:=gen_random_uuid()::text;
@@ -28,6 +33,12 @@ begin
     if sqlerrm <> 'Código inválido ou expirado' then raise; end if;
   end;
   perform public.kitchen_heartbeat(array['Cozinha']);
+  perform public.save_kitchen_printer(grant_key,'{"mode":"tcp","host":"192.168.0.53","port":9100}',true);
+  result:=public.kitchen_printer_settings(grant_key);
+  if result->>'online' is distinct from 'true' or result->>'enabled' is distinct from 'true'
+    or result->'destination' is distinct from '{"mode":"tcp","host":"192.168.0.53","port":9100}'::jsonb then
+    raise exception 'Falha ao salvar impressora TCP e confirmar agente online';
+  end if;
   perform public.save_kitchen_printer(grant_key,'{"mode":"windows","queue":"Cozinha"}',false);
   perform public.test_kitchen_printer(grant_key,test_id);
   perform public.test_kitchen_printer(grant_key,test_id);
