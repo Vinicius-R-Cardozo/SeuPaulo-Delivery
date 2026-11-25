@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import { useAuth } from '@/contexts/AuthContext';
 import { followAppPush } from '@/services/appPush';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import { PublicScreens } from '@/components/layout/PublicScreens';
 
 import { Landing } from '@/pages/Landing';
 import { CustomerLogin } from '@/pages/auth/CustomerLogin';
@@ -51,15 +52,18 @@ export function App() {
 
   return (
     <Routes>
-      {/* Landing / escolha de ambiente */}
-      <Route path="/" element={<Landing />} />
+      <Route element={<PublicScreens />}>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<CustomerLogin />} />
+        <Route path="/cadastro" element={<CustomerRegister />} />
+        <Route path="/verificar-email" element={<VerifyEmail />} />
+        <Route path="/recuperar-senha" element={<ForgotPassword />} />
+        <Route path="/reset" element={<ResetPassword />} />
+        <Route path="/entregador/login" element={<DriverLogin />} />
+        <Route path="/entregador/cadastro" element={<DriverRegister />} />
+      </Route>
 
       {/* ---------- Cliente ---------- */}
-      <Route path="/login" element={<CustomerLogin />} />
-      <Route path="/cadastro" element={<CustomerRegister />} />
-      <Route path="/verificar-email" element={<VerifyEmail />} />
-      <Route path="/recuperar-senha" element={<ForgotPassword />} />
-      <Route path="/reset" element={<ResetPassword />} />
       <Route
         path="/app"
         element={
@@ -80,8 +84,6 @@ export function App() {
       </Route>
 
       {/* ---------- Entregador ---------- */}
-      <Route path="/entregador/login" element={<DriverLogin />} />
-      <Route path="/entregador/cadastro" element={<DriverRegister />} />
       <Route
         path="/entregador"
         element={

@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useState, type ReactNode } from 'react';
 import { useLocation, useOutlet } from 'react-router-dom';
+import { useScreenEntry } from '@/hooks/useScreenEntry';
 
 interface Page {
   index: number;
@@ -9,9 +10,9 @@ interface Page {
 export function AppContent({ tabIndex }: { tabIndex: number }) {
   const { key } = useLocation();
   const outlet = useOutlet();
-  const scrollArea = useRef<HTMLElement>(null);
   const [current, setCurrent] = useState<Page>({ index: tabIndex, outlet });
   const [departing, setDeparting] = useState<Page | null>(null);
+  const scrollArea = useScreenEntry<HTMLElement>(departing ? 'none' : 'fade');
 
   if (current.index !== tabIndex) {
     const slide = current.index >= 0 && tabIndex >= 0 &&
