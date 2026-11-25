@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { followAppPush } from '@/services/appPush';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { PublicScreens } from '@/components/layout/PublicScreens';
+import { PublicLegalDocument } from '@/components/legal/LegalDocuments';
+import { About } from '@/pages/About';
 
 import { Landing } from '@/pages/Landing';
 import { CustomerLogin } from '@/pages/auth/CustomerLogin';
@@ -50,6 +52,8 @@ export function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<CustomerLogin />} />
         <Route path="/cadastro" element={<CustomerRegister />} />
+        <Route path="/termos-de-uso" element={<PublicLegalDocument kind="terms" />} />
+        <Route path="/politica-de-privacidade" element={<PublicLegalDocument kind="privacy" />} />
         <Route path="/verificar-email" element={<VerifyEmail />} />
         <Route path="/recuperar-senha" element={<ForgotPassword />} />
         <Route path="/reset" element={<ResetPassword role="customer" />} />
@@ -77,6 +81,7 @@ export function App() {
         <Route path="pedido/:id" element={<OrderTracking />} />
         <Route path="enderecos" element={<Addresses />} />
         <Route path="perfil" element={<Profile />} />
+        <Route path="perfil/sobre" element={<About />} />
       </Route>
 
       {/* ---------- Entregador ---------- */}
@@ -93,6 +98,7 @@ export function App() {
         <Route path="historico" element={<DriverHistory />} />
         <Route path="ganhos" element={<DriverEarnings />} />
         <Route path="perfil" element={<DriverProfile />} />
+        <Route path="perfil/sobre" element={<About />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

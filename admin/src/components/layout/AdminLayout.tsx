@@ -8,6 +8,7 @@ import {
   Bike,
   UserPlus,
   Users,
+  FileText,
   LogOut,
   Menu as MenuIcon,
   X,
@@ -26,6 +27,7 @@ const NAV = [
   { to: '/entregadores', label: 'Entregadores', icon: Bike, end: false },
   { to: '/solicitacoes', label: 'Solicitações', icon: UserPlus, end: false },
   { to: '/clientes', label: 'Clientes', icon: Users, end: false },
+  { to: '/documentos-legais', label: 'Documentos legais', icon: FileText, end: false },
 ];
 
 export function AdminLayout() {

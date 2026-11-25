@@ -37,6 +37,7 @@ export function DriverLogin() {
 
   return (
     <AuthShell
+      showLegalLinks
       badge="Entregador"
       title="Área do entregador"
       subtitle="Entre para receber e gerenciar suas entregas."

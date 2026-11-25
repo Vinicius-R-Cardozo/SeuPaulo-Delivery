@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { hasRole } from '@/utils/roles';
-import { useNavigate } from 'react-router-dom';
-import { User, Phone, Bike, LogOut, Save, Star, Package } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { User, Phone, Bike, LogOut, Save, Star, Package, ChevronRight, Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDriver } from '@/hooks/useDriver';
 import { useToast } from '@/providers/ToastProvider';
@@ -134,6 +134,12 @@ export function DriverProfile() {
           Salvar alterações
         </Button>
       </section>
+
+      <Link to="sobre" className="card mb-5 flex items-center gap-3 px-5 py-3.5 text-sm font-medium text-cream hover:bg-ink-3">
+        <Info size={18} className="text-brand-2" aria-hidden="true" />
+        <span className="flex-1">Sobre</span>
+        <ChevronRight size={16} className="text-cream-3" aria-hidden="true" />
+      </Link>
 
       <Button variant="ghost" fullWidth leftIcon={<LogOut size={16} />} onClick={() => setLogoutOpen(true)}>
         Sair da conta

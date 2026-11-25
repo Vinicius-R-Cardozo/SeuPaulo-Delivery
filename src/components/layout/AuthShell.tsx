@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { LegalLinks } from '@/components/legal/LegalDocuments';
 import { Logo } from '@/components/ui/Logo';
 import { cn } from '@/utils/cn';
 
@@ -15,6 +16,7 @@ export function AuthShell({
   badge,
   children,
   footer,
+  showLegalLinks = false,
   image = '/bar-fachada.jpg',
 }: {
   title: string;
@@ -22,6 +24,7 @@ export function AuthShell({
   badge?: string;
   children: ReactNode;
   footer?: ReactNode;
+  showLegalLinks?: boolean;
   image?: string;
 }) {
   const native = Capacitor.isNativePlatform();
@@ -78,6 +81,7 @@ export function AuthShell({
           {subtitle && <p className="mt-2 text-sm text-cream-3">{subtitle}</p>}
           <div className={native ? 'mt-6' : 'mt-8'}>{children}</div>
           {footer && <div className="mt-6 text-center text-sm text-cream-3">{footer}</div>}
+          {showLegalLinks && <div className="mt-3"><LegalLinks /></div>}
         </div>
       </main>
     </div>

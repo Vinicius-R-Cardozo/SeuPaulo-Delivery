@@ -58,6 +58,7 @@ export function CustomerRegister() {
 
   return (
     <AuthShell
+      showLegalLinks
       badge="Cliente"
       title="Criar conta"
       subtitle="É rapidinho. Depois é só escolher os petiscos."

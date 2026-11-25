@@ -9,6 +9,7 @@ import { MenuManager } from '@/pages/admin/MenuManager';
 import { AdminDrivers } from '@/pages/admin/Drivers';
 import { DriverApplications } from '@/pages/admin/DriverApplications';
 import { AdminCustomers } from '@/pages/admin/Customers';
+import { LegalDocuments } from '@/pages/admin/LegalDocuments';
 
 export function App() {
   return (
@@ -29,6 +30,7 @@ export function App() {
         <Route path="entregadores" element={<AdminDrivers />} />
         <Route path="solicitacoes" element={<DriverApplications />} />
         <Route path="clientes" element={<AdminCustomers />} />
+        <Route path="documentos-legais" element={<LegalDocuments />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

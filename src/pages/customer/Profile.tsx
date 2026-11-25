@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronRight,
   Save,
+  Info,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/providers/ToastProvider';
@@ -113,6 +114,7 @@ export function Profile() {
         <MenuRow icon={<ReceiptText size={18} />} label="Meus pedidos" onClick={() => navigate('/app/pedidos')} />
         <MenuRow icon={<TicketPercent size={18} />} label="Cupons" onClick={() => setCouponsOpen(true)} />
         <MenuRow icon={<KeyRound size={18} />} label="Alterar senha" onClick={() => setPwOpen(true)} />
+        <MenuRow icon={<Info size={18} />} label="Sobre" onClick={() => navigate('sobre')} />
       </section>
 
       <Button variant="ghost" fullWidth leftIcon={<LogOut size={16} />} onClick={() => setLogoutOpen(true)}>

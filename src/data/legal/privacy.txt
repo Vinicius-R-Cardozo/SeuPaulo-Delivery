@@ -1,0 +1,71 @@
+1. Quem trata seus dados e como falar conosco
+
+Esta política explica como o Seu Paulo Delivery trata dados pessoais de clientes, candidatos a entregador e entregadores. A controladora é SEU PAULO BAR & RESTAURANTE LTDA, CNPJ 60.706.811/0002-15, Rua Milton Vieira Pinto, 21, loja, Angola, Betim/MG, CEP 32604-148.
+
+Para dúvidas de privacidade, exercer seus direitos ou solicitar a exclusão da conta, fale pelo WhatsApp (31) 7352-9146, em https://wa.me/553173529146. Informe que seu pedido é sobre o Seu Paulo Delivery.
+
+2. Quais dados usamos e para quê
+
+Conta e autenticação. Tratamos nome completo, telefone, e-mail, credenciais, identificador de conta e informações de sessão para criar e proteger a conta, confirmar o e-mail, autenticar e recuperar o acesso. A mesma conta pode reunir os perfis de cliente e entregador.
+
+Endereços e pedidos. Usamos endereços cadastrados, coordenadas do ponto de entrega, referências e instruções, itens, adicionais e observações do pedido, valores, cupons, modalidade de atendimento, forma de pagamento, valor para troco, códigos de confirmação e histórico de status. Esses dados servem para calcular o frete, preparar, entregar ou disponibilizar o pedido para retirada, acompanhar seu andamento e resolver ocorrências. O checkout registra a forma de pagamento escolhida. Os dados completos do cartão são informados na maquininha no recebimento, fora do app.
+
+Atendimento. Usamos seus dados de contato, as mensagens que você envia e os registros do atendimento para responder, investigar problemas, atender solicitações de privacidade e resolver questões sobre pedidos e entregas.
+
+Cadastro de entregador. Recebemos nome, e-mail, telefone, CPF, data de nascimento, endereço, selfie e dados do veículo. Para bicicleta, recebemos também a fotografia do veículo. Para moto, recebemos dados como marca, modelo, ano, cor e placa, RENAVAM se informado, dados e imagens da CNH e o documento do veículo. Esses dados são usados para verificar a identidade, analisar documentos e requisitos, conferir a regularidade do cadastro e registrar a decisão. A análise pode incluir checagens automatizadas de preenchimento e consistência e avaliação pela equipe responsável.
+
+Operação da entrega. Usamos disponibilidade do entregador, identificação da entrega, seus horários e estados, código de confirmação, histórico de entregas e valores associados para organizar o atendimento, mostrar o andamento, confirmar a conclusão e manter o histórico. A localização precisa do entregador durante o trajeto é descrita na seção seguinte.
+
+Dados técnicos e notificações. Usamos registros de acesso e informações técnicas relacionadas à conexão e à sessão para viabilizar o acesso e proteger o serviço. Quando ativadas, notificações de pedido e de ofertas de entrega utilizam plataforma do aparelho, identificadores da instalação e tokens de notificação. No iPhone, os tokens de Atividades ao Vivo também são usados quando o recurso está habilitado. O dispositivo armazena informações como sessão, carrinho e preferências necessárias para o funcionamento desses recursos.
+
+3. Permissões e localização
+
+Cliente. Quando você pede para usar sua posição ao cadastrar um endereço, o app solicita acesso à localização do dispositivo. Você também pode digitar o endereço manualmente. O ponto confirmado pode ser salvo junto ao endereço e associado ao pedido para calcular a entrega e facilitar sua localização pelo entregador.
+
+Entregador. Ao iniciar o trajeto de entrega após a retirada, o app usa a localização precisa para mostrar o deslocamento ao cliente daquele pedido e atualizar o acompanhamento. Durante o trajeto ativo, isso pode continuar com a tela bloqueada, em segundo plano ou enquanto outro app está aberto, conforme as permissões e os recursos do aparelho. O envio da localização do trajeto é encerrado ao sair da etapa de deslocamento, como na chegada ou no cancelamento. A última posição transmitida e seu horário podem permanecer associados ao pedido. Desativar a localização nos ajustes pode impedir o início do trajeto ou interromper o acompanhamento no mapa.
+
+Câmera e arquivos. No cadastro de entregador, o app usa a câmera para registrar selfie e documentos. Quando o formulário oferece envio de arquivo, o app recebe a imagem que você seleciona. Esses arquivos ficam em armazenamento privado com acesso restrito à análise do cadastro.
+
+Notificações. Você pode ativar ou desativar notificações e Atividades ao Vivo nos ajustes do aparelho. Atualizações do pedido também podem ser consultadas no app.
+
+4. Bases legais
+
+Tratamos os dados necessários à conta, aos pedidos, às entregas e à análise do cadastro solicitado para executar contratos ou procedimentos preliminares a pedido do titular, conforme o art. 7º, V, da LGPD. Usamos dados para cumprir obrigações legais ou regulatórias (art. 7º, II) e exercer direitos em processos (art. 7º, VI), quando aplicável. Para proteger contas e evitar fraude ou uso indevido, podemos usar o legítimo interesse (art. 7º, IX), respeitando a necessidade do tratamento e os direitos dos titulares. Quando um tratamento opcional depender de consentimento (art. 7º, I), ele poderá ser revogado. As permissões do dispositivo controlam o acesso aos recursos do aparelho.
+
+5. Com quem compartilhamos dados
+
+Equipe do Seu Paulo e entregadores. A equipe autorizada acessa dados para confirmar e preparar pedidos, prestar atendimento e analisar candidaturas. O entregador que realiza o pedido tem acesso aos dados necessários para a entrega, como nome, telefone, endereço e instruções. Na entrega em andamento, o cliente pode acompanhar a posição do entregador associada ao seu pedido.
+
+Infraestrutura, e-mails e notificações. Usamos Supabase para autenticação, armazenamento e funcionamento do app, e Brevo para envio de e-mails transacionais, como verificação de conta e mensagens de pedido. Quando as notificações do sistema estão ativadas, Google Firebase Cloud Messaging e Apple Push Notification service podem receber identificadores ou tokens e os dados necessários para entregar as mensagens e as atualizações de status.
+
+Endereços e mapas. Consultas de CEP são enviadas ao ViaCEP. Para buscar endereços, usamos o texto digitado ou as coordenadas consultadas com o serviço Nominatim do OpenStreetMap. Para exibir mapas usamos a área exibida com o OpenStreetMap. Para traçar a rota, enviamos coordenadas de origem e destino a o OSRM. Se o entregador abrir a navegação externa, a coordenada do destino será enviada ao Google Maps. Esses serviços podem receber dados técnicos da conexão, como o endereço IP.
+
+WhatsApp e autoridades. Se você escolher atendimento por WhatsApp, o serviço processará seu número e as informações que você enviar. Podemos fornecer dados a autoridades ou órgãos competentes quando exigido por lei ou ordem válida, nos limites aplicáveis.
+
+Ao compartilhar dados para operar o serviço, exigimos que os fornecedores autorizados ofereçam proteção equivalente à descrita nesta política e observem as obrigações de privacidade aplicáveis.
+
+6. Processamento fora do Brasil
+
+Alguns fornecedores de tecnologia podem processar dados fora do Brasil. As transferências internacionais devem seguir os arts. 33 a 36 da LGPD e o regulamento da ANPD.
+
+7. Guarda, exclusão e segurança
+
+Mantemos os dados de conta enquanto necessários à sua utilização. Dados de pedidos e atendimentos podem ser mantidos após seu encerramento para cumprimento de obrigações legais, fiscais e contábeis e para o exercício regular de direitos, pelo prazo aplicável a cada finalidade. Quando exigido pelo art. 15 do Marco Civil da Internet, os registros de acesso à aplicação são mantidos sob sigilo por seis meses, ressalvada a guarda adicional legalmente determinada.
+
+Para solicitar a exclusão da conta, use o WhatsApp de privacidade. Podemos confirmar sua identidade antes de executar o pedido. A exclusão integral abrange os perfis de cliente e de entregador associados à mesma conta e os dados pessoais vinculados que possam ser eliminados. Dados que precisem ser conservados por obrigação legal ou outra hipótese de guarda permitida serão mantidos com acesso restrito, pelo tempo necessário à finalidade que justifica a guarda. Informaremos o andamento e a conclusão pelo canal de atendimento.
+
+Usamos medidas técnicas e administrativas de proteção, como transmissão por conexão segura, autenticação, controle de acesso e armazenamento privado para documentos de entregadores. Comunicaremos incidentes de segurança à ANPD e aos titulares afetados quando exigido pela legislação.
+
+8. Seus direitos
+
+Você pode pedir confirmação e acesso aos dados, correção, informação sobre compartilhamento, portabilidade nos termos da regulamentação e anonimização, bloqueio ou eliminação de dados desnecessários, excessivos ou tratados em desacordo com a LGPD. Quando o tratamento se basear em consentimento, você pode perguntar sobre as consequências de recusá-lo, revogá-lo e solicitar a eliminação dos dados, ressalvadas as hipóteses legais de conservação. Você também pode se opor ao tratamento nos casos previstos em lei e pedir revisão de decisão tomada unicamente de forma automatizada que afete seus interesses.
+
+Use o canal de privacidade desta política para exercer seus direitos gratuitamente. Para confirmação ou acesso, a resposta simplificada é imediata e a declaração completa é fornecida em até 15 dias, observados os prazos especiais aplicáveis por lei ou regulamento. Você também pode apresentar petição à ANPD e aos órgãos de defesa do consumidor, conforme o caso.
+
+9. Crianças, adolescentes e verificação de idade
+
+A oferta de bebidas alcoólicas e o cadastro de entregador são restritos a maiores de idade, observados os demais requisitos legais. Quando houver tratamento de dados de crianças ou adolescentes, será observado seu melhor interesse, conforme o art. 14 da LGPD. Dados coletados para verificar a idade de crianças e adolescentes serão usados exclusivamente para essa finalidade, conforme o ECA Digital.
+
+10. Atualizações desta política
+
+A versão vigente ficará disponível no app e em página pública. Alterações relevantes serão comunicadas pelo app ou por outro canal apropriado. A data no início do documento identifica a versão em vigor.

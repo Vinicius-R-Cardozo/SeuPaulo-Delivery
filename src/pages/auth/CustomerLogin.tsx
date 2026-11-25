@@ -38,6 +38,7 @@ export function CustomerLogin() {
 
   return (
     <AuthShell
+      showLegalLinks
       badge="Cliente"
       title="Bem-vindo de volta"
       subtitle="Entre para pedir seu petisco favorito."
