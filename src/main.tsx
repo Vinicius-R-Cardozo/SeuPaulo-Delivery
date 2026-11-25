@@ -5,16 +5,20 @@ import { Capacitor } from '@capacitor/core';
 import 'leaflet/dist/leaflet.css';
 import './index.css';
 import { App } from './App';
+import { NativeLaunch } from '@/components/layout/NativeLaunch';
 import { AppProviders } from '@/providers/AppProviders';
 
-document.documentElement.classList.toggle('native-app', Capacitor.isNativePlatform());
+const isNativeApp = Capacitor.isNativePlatform();
+document.documentElement.classList.toggle('native-app', isNativeApp);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <AppProviders>
-        <App />
-      </AppProviders>
-    </BrowserRouter>
+    <NativeLaunch enabled={isNativeApp}>
+      <BrowserRouter>
+        <AppProviders>
+          <App />
+        </AppProviders>
+      </BrowserRouter>
+    </NativeLaunch>
   </StrictMode>,
 );

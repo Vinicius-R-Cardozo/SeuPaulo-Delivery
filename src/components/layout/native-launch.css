@@ -1,0 +1,144 @@
+.native-launch-content[inert] {
+  isolation: isolate;
+}
+
+.native-launch {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--color-brand);
+  touch-action: none;
+}
+
+.native-launch[data-phase='leaving'] {
+  animation: launch-exit 220ms ease-in 270ms both;
+}
+
+.native-launch::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 46%, var(--color-brand) 8%, var(--color-brand-deep) 100%);
+  animation: launch-light 460ms ease-out both;
+}
+
+.native-launch__glasses,
+.native-launch__logo {
+  grid-area: 1 / 1;
+}
+
+.native-launch__glasses {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: min(172px, 56vw, 48vh);
+  aspect-ratio: 172 / 108;
+  animation: launch-glasses-out 255ms ease-in 600ms both;
+}
+
+.native-launch__glass {
+  display: block;
+  animation: launch-toast 675ms cubic-bezier(0.22, 1, 0.36, 1) 85ms both;
+}
+
+.native-launch__glass--left {
+  --direction: 1;
+  width: 40.7%;
+}
+
+.native-launch__glass--right {
+  --direction: -1;
+  width: 38.4%;
+}
+
+.native-launch__rays {
+  position: absolute;
+  left: 50%;
+  top: -11%;
+  width: 22%;
+  animation: launch-rays 340ms ease-out 405ms both;
+}
+
+.native-launch__logo {
+  display: block;
+  width: min(69vw, 340px, 104vh);
+  height: auto;
+  animation: launch-logo 465ms cubic-bezier(0.22, 1, 0.36, 1) 780ms both;
+}
+
+.native-launch[data-phase='waiting']::before,
+.native-launch[data-phase='waiting'] * {
+  animation-play-state: paused;
+}
+
+@keyframes launch-toast {
+  0% {
+    transform: rotate(calc(16deg * var(--direction)));
+  }
+  52% {
+    transform: translateX(calc(29% * var(--direction))) rotate(0deg);
+  }
+  72% {
+    transform: translateX(calc(20% * var(--direction))) rotate(calc(6deg * var(--direction)));
+  }
+  100% {
+    transform: translate(calc(24% * var(--direction)), -8%) rotate(calc(3deg * var(--direction)));
+  }
+}
+
+@keyframes launch-rays {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.83);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(1.18);
+  }
+}
+
+@keyframes launch-glasses-out {
+  to { opacity: 0; }
+}
+
+@keyframes launch-logo {
+  from {
+    opacity: 0;
+    transform: translateY(9px) scale(0.93);
+  }
+}
+
+@keyframes launch-light {
+  from { opacity: 0; }
+}
+
+@keyframes launch-exit {
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .native-launch[data-phase='leaving'] {
+    animation: launch-exit 1ms linear 240ms both;
+  }
+
+  .native-launch__glasses {
+    display: none;
+  }
+
+  .native-launch::before {
+    animation: none;
+  }
+
+  .native-launch__logo {
+    animation: launch-logo 1ms linear both;
+  }
+}

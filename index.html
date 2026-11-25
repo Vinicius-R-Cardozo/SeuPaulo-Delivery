@@ -2,6 +2,15 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      if (window.Capacitor?.isNativePlatform?.()) {
+        document.documentElement.classList.add('native-launching');
+      }
+    </script>
+    <style>
+      html.native-launching,
+      html.native-launching body { background-color: #a42129; }
+    </style>
     <link rel="icon" type="image/png" href="/mark.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
     <meta name="theme-color" content="#121010" />
@@ -9,7 +18,12 @@
     <title>Seu Paulo Delivery</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link id="app-fonts" href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media = 'all'" />
+    <script>
+      if (!document.documentElement.classList.contains('native-launching')) {
+        document.getElementById('app-fonts').media = 'all';
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
