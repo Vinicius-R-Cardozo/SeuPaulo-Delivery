@@ -27,8 +27,8 @@ class KitchenAgentTests(unittest.TestCase):
 
     def test_single_ticket_with_wrapped_notes_and_only_cut_command(self):
         data = agent.receipt(self.job)
-        self.assertTrue(data.endswith(b"\x1b2\x1bd\x08\x1dV\x00"))
-        text = data[:-len(agent.RECEIPT_END)].decode("ascii")
+        self.assertTrue(data.endswith(b"\x1d\x56\x42\x30"))
+        text = data[:-len(agent.FEED_AND_CUT)].decode("ascii")
         self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
         for value in ("DELIVERY #AB12", "2x Feijao", "+ Farofa", "OBS: Sem cebola"):
             self.assertIn(value, text)
@@ -49,8 +49,8 @@ class KitchenAgentTests(unittest.TestCase):
                 items[-1]["notes"] = "Ultima observacao"
                 self.job["ticket"]["items"] = items
                 expected = agent.receipt(self.job)
-                self.assertEqual(expected.count(b"\x1dV\x00"), 1)
-                self.assertTrue(expected.endswith(b"Ultima observacao\n" + agent.RECEIPT_END))
+                self.assertEqual(expected.count(b"\x1dV"), 1)
+                self.assertTrue(expected.endswith(b"Ultima observacao\n" + agent.FEED_AND_CUT))
                 agent.process_one(self.api, {})
                 receiver.handle_request()
 
@@ -61,6 +61,14 @@ class KitchenAgentTests(unittest.TestCase):
         for _, _, cut, text in receiver.receipts:
             self.assertTrue(cut)
             self.assertTrue(text.endswith("OBS: Ultima observacao"))
+
+    def test_paper_test_identifies_running_agent_and_last_line(self):
+        self.job["ticket"]["code"] = "#TESTE"
+        data = agent.receipt(self.job)
+        body = data[:-len(agent.FEED_AND_CUT)].decode("ascii")
+        self.assertIn(f"AGENTE {agent.AGENT_VERSION}", body)
+        self.assertTrue(body.rstrip().endswith("FIM DO TESTE"))
+        self.assertTrue(data.endswith(agent.FEED_AND_CUT))
 
     def test_before_send_failure_retries(self):
         for error, code in (

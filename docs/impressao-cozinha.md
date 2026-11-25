@@ -21,7 +21,7 @@ Publique as migrações `20261124163031_kitchen_delivery_print` e `2026112416401
 5. Clique em **Imprimir comanda de teste**. Confira na cozinha a via **DELIVERY #TESTE**, os adicionais e o corte. O status de envio indica que o agente entregou os bytes ao destino local. Para uma fila compartilhada, valide também uma mesa do PDV durante o teste.
 6. Marque **Imprimir automaticamente ao confirmar delivery** e salve. A partir daí, confirmar um delivery no admin envia a comanda para o destino salvo. A opção se aplica às próximas confirmações.
 
-Para migrar uma instalação anterior, use o mesmo fluxo. Gerar o código mantém a conexão existente até o código ser utilizado. O novo pareamento revoga a chave anterior e requer selecionar o destino e habilitar as impressões novamente. **Desconectar computador** revoga o acesso dele. Comandas reais pendentes continuam disponíveis para o próximo agente.
+Para atualizar um agente instalado pelo ZIP no mesmo computador, extraia a versão nova e execute o `Instalar.cmd` como administrador. O instalador reutiliza a configuração anterior. Confira a versão impressa no teste. Para parear novamente neste mesmo computador, execute `Instalar.cmd -Reconnect` em um terminal elevado. O novo pareamento revoga a chave anterior e requer selecionar o destino e habilitar as impressões novamente. **Desconectar computador** revoga o acesso dele. Comandas reais pendentes continuam disponíveis para o próximo agente.
 
 ## Instalação manual anterior
 
@@ -53,7 +53,7 @@ Para migrar uma instalação anterior, use o mesmo fluxo. Gerar o código manté
 - **Enviada à impressora** indica aceite dos bytes pelo destino local. Em uma fila Windows, a bobina pode acabar depois do aceite. Confira o spooler e o papel antes de pedir outra via.
 - **Confira na cozinha** aparece após falha durante o envio ou após dois minutos sem confirmação do agente. A via original sai da repetição automática. Após conferir o papel, o atendente pode solicitar **Reimprimir comanda** no detalhe do pedido. A segunda via é identificada no papel.
 - Cancelar ou finalizar o pedido retira da fila trabalhos que ainda aguardavam envio. Se a comanda já foi encaminhada, avise a cozinha em caso de cancelamento.
-- O agente imprime todos os itens, adicionais e observações, avança o papel com o espaçamento padrão e aciona a guilhotina uma vez por comanda. Confira no papel o corte abaixo da última linha em uma comanda curta e em outra com vários itens.
+- O agente imprime todos os itens, adicionais e observações. O comando ESC/POS de avanço e corte usa a posição da última linha impressa como referência e aciona a guilhotina uma vez. Confira a versão do agente e a linha **FIM DO TESTE** no papel. Verifique também uma comanda curta e outra com vários itens.
 - Ao ocorrer uma falha, o painel informa a causa disponível e orienta a conferir se o computador do restaurante está na rede **SEU PAULO SYSTEM**. As versões anteriores do agente continuam imprimindo e exibem avisos genéricos até a instalação do pacote atualizado.
 
 ## Manutenção

@@ -222,7 +222,7 @@ function PrinterSettings({ rpc, lock }: { rpc: Call; lock: () => void }) {
           <ol className={'list-decimal space-y-1 pl-5 ' + quiet}>
             <li>No Windows 64 bits que fica ligado no restaurante, baixe e extraia o instalador.</li>
             <li>Clique com o botão direito em <strong>Instalar.cmd</strong> e escolha <strong>Executar como administrador</strong>.</li>
-            <li>Gere o código abaixo, cole na janela do instalador e pressione Enter.</li>
+            <li>Se o instalador pedir um código, gere-o abaixo e cole na janela. Ao atualizar neste mesmo PC, o agente usa a configuração existente.</li>
           </ol>
           {settings.paired && <p className="text-sm text-amber">Ao usar o código, o novo computador substituirá o atual. Escolha a impressora e reative os deliveries após a troca.</p>}
           <div className="flex flex-wrap gap-2">

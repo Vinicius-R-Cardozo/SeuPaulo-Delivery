@@ -18,9 +18,10 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 
-PAPER_CUT = b"\x1dV\x00"
-# Use standard line spacing and advance the last printed line past the blade.
-RECEIPT_END = b"\x1b2\x1bd\x08" + PAPER_CUT
+AGENT_VERSION = "1.2.0"
+# GS V 66 is the Elgin i9 feed-and-cut command. Advance to the blade
+# plus 48 vertical motion units to leave a margin below the last line.
+FEED_AND_CUT = b"\x1d\x56\x42\x30"
 
 
 def plain(value):
@@ -33,7 +34,11 @@ def plain(value):
 def receipt(job):
     ticket = job["ticket"]
     width = 42
-    lines = ["SEU PAULO BUTECO".center(width), ("DELIVERY " + plain(ticket["code"])).center(width)]
+    code = plain(ticket["code"])
+    lines = ["SEU PAULO BUTECO".center(width), ("DELIVERY " + code).center(width)]
+    is_test = code in ("#TESTE", "#TESTE-LOCAL")
+    if is_test:
+        lines.append(f"AGENTE {AGENT_VERSION}".center(width))
     if job["copy"]:
         lines.append(("REIMPRESSAO " + str(job["copy"])).center(width))
     lines.extend(["-" * width, "PEDIDO EM: " + plain(ticket["ordered_at"]), "-" * width])
@@ -50,7 +55,9 @@ def receipt(job):
         if item.get("notes"):
             lines.extend(textwrap.wrap("   OBS: " + plain(item["notes"]), width, subsequent_indent="        "))
         lines.append("")
-    return "\n".join(lines).encode("ascii") + RECEIPT_END
+    if is_test:
+        lines.extend(["FIM DO TESTE".center(width), ""])
+    return "\n".join(lines).encode("ascii") + FEED_AND_CUT
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -216,6 +223,7 @@ def connect(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", action="version", version=AGENT_VERSION)
     parser.add_argument("config", type=Path)
     parser.add_argument("--pair", action="store_true", help="Gerar chave e SQL de ativação")
     parser.add_argument("--connect", action="store_true", help="Conectar pelo painel administrativo")
