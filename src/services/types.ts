@@ -27,9 +27,13 @@ export interface AuthSession {
   profile: Profile;
 }
 
+export type LegalDocumentKind = 'terms' | 'privacy';
+export type LegalRevisions = Record<LegalDocumentKind, number>;
+
 /* ------------------ Cadastro de entregador (onboarding) ------------------ */
 
 export interface DriverApplicationInput {
+  legalAcceptance: LegalRevisions;
   /** senha da nova conta do entregador */
   password: string;
   vehicle: DeliveryVehicle;
@@ -111,7 +115,7 @@ export interface DataRepository {
    * código de 6 dígitos, envia por e-mail e deixa a conta PENDENTE de
    * verificação. Devolve quando o código expira (nunca o código em si).
    */
-  startCustomerSignup(input: SignUpInput): Promise<{ expiresAt: string }>;
+  startCustomerSignup(input: SignUpInput & { legalAcceptance: LegalRevisions }): Promise<{ expiresAt: string }>;
   /** Valida o código no backend; se correto e no prazo, ativa a conta. */
   verifyCustomerEmail(email: string, code: string): Promise<void>;
   /** Invalida o código anterior e envia um novo, reiniciando o prazo. */

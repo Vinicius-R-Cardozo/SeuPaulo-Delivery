@@ -8,6 +8,7 @@ type Publication = { revision: number; body: string; published_at: string };
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' });
 const MAX_LENGTH = 60_000;
+const MAX_SUMMARY_LENGTH = 2_000;
 
 async function getLatest(kind: DocumentKind, signal?: AbortSignal) {
   const query = getSupabase().from('legal_documents').select('revision,body,published_at')
@@ -22,6 +23,7 @@ function DocumentEditor({ kind, title }: { kind: DocumentKind; title: string }) 
   const editorId = useId();
   const [latest, setLatest] = useState<Publication | null>(null);
   const [body, setBody] = useState('');
+  const [summary, setSummary] = useState('');
   const [ready, setReady] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -45,8 +47,10 @@ function DocumentEditor({ kind, title }: { kind: DocumentKind; title: string }) 
 
   const nextRevision = (latest?.revision ?? 0) + 1;
   const text = body.trim();
+  const summaryText = summary.trim();
   const changed = text !== (latest?.body ?? '');
-  const valid = text.length > 0 && text.length <= MAX_LENGTH;
+  const valid = text.length > 0 && text.length <= MAX_LENGTH &&
+    (nextRevision === 1 || (summaryText.length > 0 && summaryText.length <= MAX_SUMMARY_LENGTH));
 
   const publish = async () => {
     if (!ready || !changed || !valid || saving || conflict) return;
@@ -55,7 +59,7 @@ function DocumentEditor({ kind, title }: { kind: DocumentKind; title: string }) 
     setNotice('');
     try {
       const { data, error: publishError } = await getSupabase().from('legal_documents')
-        .insert({ kind, revision: nextRevision, body: text })
+        .insert({ kind, revision: nextRevision, body: text, change_summary: summaryText || null })
         .select('revision,body,published_at').single<Publication>();
       if (publishError) {
         if (publishError.code === '23505') setConflict(true);
@@ -64,6 +68,7 @@ function DocumentEditor({ kind, title }: { kind: DocumentKind; title: string }) 
       }
       setLatest(data);
       setBody(data.body);
+      setSummary('');
       setNotice(`Versão ${data.revision} publicada.`);
     } catch {
       setError('Não foi possível publicar. Seu texto continua no editor.');
@@ -79,7 +84,7 @@ function DocumentEditor({ kind, title }: { kind: DocumentKind; title: string }) 
       const current = await getLatest(kind);
       setLatest(current);
       setConflict(false);
-      setNotice('Versão publicada atualizada abaixo. Compare com seu texto antes de publicar.');
+      setNotice('Versão publicada atualizada abaixo. Compare com o seu texto e revise o resumo antes de publicar.');
     } catch {
       setError('Não foi possível carregar a nova versão. Tente novamente.');
     }
@@ -100,6 +105,17 @@ function DocumentEditor({ kind, title }: { kind: DocumentKind; title: string }) 
           className="w-full rounded-xl border border-ink-4 bg-ink p-4 text-sm leading-relaxed text-cream focus:border-brand focus:outline-none disabled:opacity-60"
           placeholder="Cole o texto revisado, com uma linha em branco entre os parágrafos." />
       </div>
+      {nextRevision > 1 && (
+        <div className="space-y-2">
+          <label htmlFor={`${editorId}-summary`} className="block text-sm font-medium text-cream">O que mudou</label>
+          <p id={`${editorId}-summary-help`} className="text-sm text-cream-3">Destaque as mudanças que clientes e entregadores precisam saber. O resumo aparece antes da confirmação no app.</p>
+          <textarea id={`${editorId}-summary`} aria-describedby={`${editorId}-summary-help`} required rows={4}
+            value={summary} disabled={!ready || saving} maxLength={MAX_SUMMARY_LENGTH}
+            onChange={event => { setSummary(event.target.value); setNotice(''); }}
+            className="w-full rounded-xl border border-ink-4 bg-ink p-4 text-sm leading-relaxed text-cream focus:border-brand focus:outline-none disabled:opacity-60"
+            placeholder="Detalhamos por quanto tempo guardamos o histórico de pedidos." />
+        </div>
+      )}
       {latest && changed && (
         <details className="rounded-xl border border-ink-4 p-3 text-sm text-cream-3">
           <summary className="cursor-pointer font-medium text-cream">Ver o texto publicado</summary>
@@ -123,7 +139,7 @@ function DocumentEditor({ kind, title }: { kind: DocumentKind; title: string }) 
       </Button>
       <ConfirmDialog open={confirm} onClose={() => setConfirm(false)} onConfirm={publish}
         title={`Publicar ${title}?`} loading={saving} confirmLabel="Publicar"
-        message={`A versão ${nextRevision} será exibida no app. Confira se o texto está completo e se descreve os fluxos em produção.`} />
+        message={`A versão ${nextRevision} será exibida no app e exigirá uma nova confirmação de clientes e entregadores. Confira se o texto está completo e descreve os fluxos em produção.`} />
     </section>
   );
 }

@@ -16,6 +16,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { AuthShell } from '@/components/layout/AuthShell';
+import { SignupLegalFields, useSignupLegalAcceptance } from '@/components/legal/LegalAcceptance';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
@@ -70,6 +71,7 @@ export function DriverRegister() {
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
+  const legal = useSignupLegalAcceptance();
 
   const [f, setF] = useState({
     fullName: profile?.fullName ?? '',
@@ -179,6 +181,7 @@ export function DriverRegister() {
   }
 
   const next = () => {
+    if (step === 0 && !legal.acceptance) return;
     const e = validate(label);
     setErrors(e);
     if (Object.values(e).some(Boolean)) return;
@@ -200,6 +203,11 @@ export function DriverRegister() {
   /* ------------------------------- Envio --------------------------------- */
   const submit = async () => {
     if (!vehicle) return;
+    if (!legal.acceptance) {
+      setStep(0);
+      toast.error('Confira e confirme os documentos vigentes para enviar seu cadastro.');
+      return;
+    }
     // Revalida tudo antes de enviar.
     for (const [index, s] of steps.entries()) {
       const e = validate(s);
@@ -219,6 +227,7 @@ export function DriverRegister() {
       const documents = kinds.map((kind) => docs[kind])
         .filter((document): document is CapturedMedia => document !== undefined);
       const { profile } = await repository.registerDriver({
+        legalAcceptance: legal.acceptance,
         password: f.password,
         vehicle,
         fullName: f.fullName,
@@ -265,6 +274,7 @@ export function DriverRegister() {
       navigate('/entregador', { replace: true });
     } catch (err) {
       toast.error((err as Error).message);
+      legal.refresh();
     } finally {
       setLoading(false);
     }
@@ -274,7 +284,7 @@ export function DriverRegister() {
 
   return (
     <AuthShell
-      showLegalLinks
+      showLegalLinks={step !== 0}
       badge="Entregador"
       title="Cadastro de entregador"
       subtitle="Envie seus dados e os do veículo para análise."
@@ -314,6 +324,7 @@ export function DriverRegister() {
               />
             </div>
             {errors.vehicle && <p className="mt-2 text-xs text-danger">{errors.vehicle}</p>}
+            <div className="mt-5"><SignupLegalFields fields={legal.fields} disabled={loading} /></div>
           </div>
         )}
 
@@ -627,7 +638,7 @@ export function DriverRegister() {
             Enviar para aprovação
           </Button>
         ) : (
-          <Button variant="amber" fullWidth onClick={next} rightIcon={<ArrowRight size={16} />}>
+          <Button variant="amber" fullWidth onClick={next} disabled={step === 0 && !legal.acceptance} rightIcon={<ArrowRight size={16} />}>
             Continuar
           </Button>
         )}

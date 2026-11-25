@@ -113,6 +113,28 @@ Deno.serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    const legal = body.legalAcceptance;
+    const legalRevisions = {
+      p_terms_revision: null as number | null,
+      p_privacy_revision: null as number | null,
+    };
+    if (action === 'request' || action === 'driver-account') {
+      if (legal !== undefined) {
+        if (!legal || !Number.isSafeInteger(legal.terms) || !Number.isSafeInteger(legal.privacy) ||
+          legal.terms < 1 || legal.privacy < 1 || legal.terms > 2_147_483_647 || legal.privacy > 2_147_483_647) {
+          return json({ error: 'Confirme os Termos de Uso e a Política de Privacidade para continuar.' });
+        }
+        legalRevisions.p_terms_revision = legal.terms;
+        legalRevisions.p_privacy_revision = legal.privacy;
+      }
+      const { error } = await admin.rpc('validate_signup_legal_acceptance', legalRevisions);
+      if (error) {
+        if (error.code === '22023' || error.code === '55000') return json({ error: error.message });
+        console.error('Erro ao verificar documentos do cadastro', error.code);
+        return json({ error: 'Não foi possível verificar os documentos do cadastro. Tente novamente.' }, 503);
+      }
+    }
+
     if (action === 'driver-account') {
       const password = String(body.password ?? '');
       if (password.length < 6) return json({ error: 'A senha precisa de ao menos 6 caracteres.' });
@@ -142,6 +164,15 @@ Deno.serve(async (req) => {
         await publicAuth.auth.signOut({ scope: 'local' });
         return json({ error: 'Esta conta precisa concluir a verificação antes de cadastrar um entregador.' });
       }
+      if (legalRevisions.p_terms_revision !== null) {
+        const { error: acceptanceError } = await admin.rpc('record_signup_legal_acceptance', {
+          p_user_id: data.user.id, p_source: 'driver_signup', ...legalRevisions,
+        });
+        if (acceptanceError) {
+          await publicAuth.auth.signOut({ scope: 'local' });
+          return json({ error: 'Não foi possível registrar os aceites do cadastro. Tente novamente.' }, 503);
+        }
+      }
       return json({ access_token: data.session.access_token, refresh_token: data.session.refresh_token });
     }
 
@@ -151,6 +182,10 @@ Deno.serve(async (req) => {
       const fullName = String(body.fullName ?? '').trim();
       const phone = String(body.phone ?? '').trim();
       if (password.length < 6) return json({ error: 'A senha precisa de ao menos 6 caracteres.' });
+      const pendingLegal = {
+        legal_terms_revision: legalRevisions.p_terms_revision,
+        legal_privacy_revision: legalRevisions.p_privacy_revision,
+      };
 
       const { data: status, error: lookupError } = await admin.rpc('auth_user_status', { p_email: email });
       if (lookupError) {
@@ -171,10 +206,19 @@ Deno.serve(async (req) => {
         }
         await publicAuth.auth.signOut({ scope: 'local' });
         const { data: pending, error: pendingError } = await admin.from('signup_verifications')
-          .select('expires_at, consumed').eq('email', email).maybeSingle();
+          .select('attempt_id, expires_at, consumed, legal_terms_revision, legal_privacy_revision')
+          .eq('email', email).maybeSingle();
         if (pendingError) return json({ error: 'Serviço de cadastro indisponível.' }, 503);
-        if (pending && !pending.consumed && Date.parse(pending.expires_at) > Date.now())
+        if (pending && !pending.consumed && Date.parse(pending.expires_at) > Date.now()) {
+          if (pending.legal_terms_revision !== pendingLegal.legal_terms_revision ||
+            pending.legal_privacy_revision !== pendingLegal.legal_privacy_revision) {
+            const { data: updated, error } = await admin.from('signup_verifications')
+              .update(pendingLegal).eq('email', email).eq('attempt_id', pending.attempt_id)
+              .eq('consumed', false).select('attempt_id').maybeSingle();
+            if (error || !updated) return json({ error: 'Não foi possível atualizar os aceites. Tente novamente.' });
+          }
           return json({ ok: true, expiresAt: pending.expires_at });
+        }
       }
 
       const code = gen6();
@@ -208,6 +252,7 @@ Deno.serve(async (req) => {
         expires_at: expiresAt,
         consumed: false,
         attempts: 0,
+        ...pendingLegal,
       });
       if (upErr) {
         if (createdAccount) {

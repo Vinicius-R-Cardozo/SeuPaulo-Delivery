@@ -367,13 +367,14 @@ class SupabaseRepository implements DataRepository {
     return res;
   }
 
-  async startCustomerSignup(input: SignUpInput): Promise<{ expiresAt: string }> {
+  async startCustomerSignup(input: Parameters<DataRepository['startCustomerSignup']>[0]): Promise<{ expiresAt: string }> {
     return this.callSignupFn<{ expiresAt: string }>({
       action: 'request',
       email: input.email,
       password: input.password,
       fullName: input.fullName,
       phone: input.phone,
+      legalAcceptance: input.legalAcceptance,
     });
   }
 
@@ -697,6 +698,7 @@ class SupabaseRepository implements DataRepository {
     const credentials = await this.callSignupFn<{ access_token: string; refresh_token: string }>({
       action: 'driver-account', email: input.email, password: input.password,
       fullName: input.fullName, phone: input.phone,
+      legalAcceptance: input.legalAcceptance,
     });
     const { data, error } = await this.sb.auth.setSession(credentials);
     if (error || !data.user) throw new Error('Não foi possível entrar na conta. Tente novamente.');

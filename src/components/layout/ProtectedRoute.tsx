@@ -4,6 +4,7 @@ import type { Role } from '@/types';
 import { hasRole } from '@/utils/roles';
 import { useAuth } from '@/contexts/AuthContext';
 import { FullScreenLoader } from '@/components/ui/Spinner';
+import { LegalAcceptanceGate } from '@/components/legal/LegalAcceptanceGate';
 
 const LOGIN_BY_ROLE: Record<Role, string> = {
   customer: '/login',
@@ -28,5 +29,6 @@ export function ProtectedRoute({ role, children }: { role: Role; children: React
     const home = { customer: '/app', driver: '/entregador', admin: '/admin' }[profile.role];
     return <Navigate to={home} replace />;
   }
-  return <>{children}</>;
+  if (role === 'admin') return <>{children}</>;
+  return <LegalAcceptanceGate key={profile.id}>{children}</LegalAcceptanceGate>;
 }

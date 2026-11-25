@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, User, Phone } from 'lucide-react';
 import { AuthShell } from '@/components/layout/AuthShell';
+import { SignupLegalFields, useSignupLegalAcceptance } from '@/components/legal/LegalAcceptance';
 import { Input } from '@/components/ui/Input';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +21,7 @@ export function CustomerRegister() {
   const { profile } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const legal = useSignupLegalAcceptance();
 
   const [form, setForm] = useState({ fullName: profile?.fullName ?? '', email: profile?.email ?? '', phone: profile?.phone ?? '', password: '' });
   const [errors, setErrors] = useState<Record<string, string | null>>({});
@@ -29,6 +31,7 @@ export function CustomerRegister() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!legal.acceptance) return;
     const next = {
       fullName: validateFullName(form.fullName),
       email: validateEmail(form.email),
@@ -40,7 +43,7 @@ export function CustomerRegister() {
     setLoading(true);
     try {
       // Não finaliza a conta ainda: gera e envia o código de verificação.
-      const { expiresAt } = await repository.startCustomerSignup({ ...form, role: 'customer' });
+      const { expiresAt } = await repository.startCustomerSignup({ ...form, role: 'customer', legalAcceptance: legal.acceptance });
       try {
         sessionStorage.setItem('spd_verify_email', form.email.trim());
         sessionStorage.setItem('spd_verify_exp', String(new Date(expiresAt).getTime()));
@@ -51,6 +54,7 @@ export function CustomerRegister() {
       navigate('/verificar-email');
     } catch (err) {
       toast.error((err as Error).message);
+      legal.refresh();
     } finally {
       setLoading(false);
     }
@@ -58,7 +62,6 @@ export function CustomerRegister() {
 
   return (
     <AuthShell
-      showLegalLinks
       badge="Cliente"
       title="Criar conta"
       subtitle="É rapidinho. Depois é só escolher os petiscos."
@@ -111,7 +114,8 @@ export function CustomerRegister() {
           showStrength
           autoComplete="new-password"
         />
-        <Button type="submit" fullWidth size="lg" loading={loading}>
+        <SignupLegalFields fields={legal.fields} disabled={loading} />
+        <Button type="submit" fullWidth size="lg" loading={loading} disabled={!legal.acceptance}>
           Criar conta
         </Button>
       </form>

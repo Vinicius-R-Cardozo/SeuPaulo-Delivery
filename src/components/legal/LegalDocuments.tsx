@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Modal } from '@/components/ui/Modal';
 import { getSupabase } from '@/services/supabase/client';
+import type { LegalDocumentKind as DocumentKind, LegalRevisions } from '@/services/types';
 import termsDraft from '@/data/legal/terms.txt?raw';
 import privacyDraft from '@/data/legal/privacy.txt?raw';
 
@@ -10,12 +11,11 @@ const DOCUMENTS = {
   privacy: { title: 'Política de Privacidade', draft: privacyDraft },
 } as const;
 
-type DocumentKind = keyof typeof DOCUMENTS;
 type Publication = { revision: number; body: string; published_at: string };
 
 const publishedDate = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeZone: 'America/Sao_Paulo' });
 
-function LegalDocumentReader({ kind, showDraft }: { kind: DocumentKind; showDraft?: boolean }) {
+function LegalDocumentReader({ kind, revision, showDraft }: { kind: DocumentKind; revision?: number; showDraft?: boolean }) {
   const [publication, setPublication] = useState<Publication | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [retry, setRetry] = useState(0);
@@ -30,9 +30,11 @@ function LegalDocumentReader({ kind, showDraft }: { kind: DocumentKind; showDraf
       request = controller;
       const timeout = window.setTimeout(() => controller.abort(), 12_000);
       try {
-        const { data, error } = await getSupabase().from('legal_documents')
+        const query = getSupabase().from('legal_documents')
           .select('revision,body,published_at')
-          .eq('kind', kind).order('revision', { ascending: false }).limit(1)
+          .eq('kind', kind);
+        if (revision !== undefined) query.eq('revision', revision);
+        const { data, error } = await query.order('revision', { ascending: false }).limit(1)
           .abortSignal(controller.signal).maybeSingle<Publication>();
         if (error) throw error;
         if (active) {
@@ -48,7 +50,7 @@ function LegalDocumentReader({ kind, showDraft }: { kind: DocumentKind; showDraf
     };
     const onVisible = () => void refresh();
     onVisible();
-    const timer = window.setInterval(onVisible, 30_000);
+    const timer = revision === undefined ? window.setInterval(onVisible, 30_000) : undefined;
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', onVisible);
     return () => {
@@ -58,7 +60,7 @@ function LegalDocumentReader({ kind, showDraft }: { kind: DocumentKind; showDraf
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', onVisible);
     };
-  }, [kind, retry]);
+  }, [kind, revision, retry]);
 
   const body = publication?.body ?? (showDraft && status !== 'loading' ? DOCUMENTS[kind].draft : null);
   return (
@@ -90,12 +92,14 @@ function LegalDocumentReader({ kind, showDraft }: { kind: DocumentKind; showDraf
   );
 }
 
-export function LegalLinks() {
+export function LegalLinks({ revisions }: { revisions?: Partial<LegalRevisions> } = {}) {
   const [params, setParams] = useSearchParams();
   const appearance = useLocation().state;
   const navigate = useNavigate();
   const selected = params.get('documento');
   const kind = selected === 'terms' || selected === 'privacy' ? selected : null;
+  const requestedRevision = Number(params.get('revisao'));
+  const revision = Number.isSafeInteger(requestedRevision) && requestedRevision > 0 ? requestedRevision : undefined;
 
   const close = useCallback(() => {
     if (appearance?.openedLegalDocument === true) {
@@ -105,6 +109,7 @@ export function LegalLinks() {
     setParams(current => {
       const next = new URLSearchParams(current);
       next.delete('documento');
+      next.delete('revisao');
       return next;
     }, { replace: true });
   }, [appearance, navigate, setParams]);
@@ -112,9 +117,12 @@ export function LegalLinks() {
   return (
     <>
       <nav className="flex flex-wrap items-center justify-center gap-x-5" aria-label="Documentos legais">
-        {(['terms', 'privacy'] as const).map(documentKind => {
+        {(['terms', 'privacy'] as const).filter(documentKind => !revisions || revisions[documentKind] !== undefined).map(documentKind => {
           const next = new URLSearchParams(params);
           next.set('documento', documentKind);
+          const exactRevision = revisions?.[documentKind];
+          if (exactRevision !== undefined) next.set('revisao', String(exactRevision));
+          else next.delete('revisao');
           return (
             <Link key={documentKind} to={{ search: next.toString() }} state={{
               ...appearance, openedLegalDocument: true,
@@ -126,7 +134,7 @@ export function LegalLinks() {
       </nav>
       {kind && (
         <Modal open title={DOCUMENTS[kind].title} onClose={close}>
-          <LegalDocumentReader key={kind} kind={kind} showDraft />
+          <LegalDocumentReader key={`${kind}:${revision}`} kind={kind} revision={revision} showDraft={revision === undefined && !revisions} />
         </Modal>
       )}
     </>
