@@ -1,6 +1,5 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
-import { Capacitor } from '@capacitor/core';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { followAppPush } from '@/services/appPush';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
@@ -37,7 +36,6 @@ import { DriverProfile } from '@/pages/driver/DriverProfile';
 // (pasta admin/, publicado no Vercel). Cliente e entregador não o acessam.
 
 export function App() {
-  const { pathname } = useLocation();
   const navigate = useNavigate();
   const currentNavigate = useRef(navigate);
   currentNavigate.current = navigate;
@@ -45,10 +43,6 @@ export function App() {
   useEffect(() => {
     if (userId) return followAppPush(userId, path => currentNavigate.current(path));
   }, [userId]);
-
-  useLayoutEffect(() => {
-    if (Capacitor.isNativePlatform()) window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [pathname]);
 
   return (
     <Routes>

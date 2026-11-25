@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from './Button';
 
@@ -28,8 +29,8 @@ export function Modal({
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-[2000] flex items-end justify-center sm:items-center">
+  return createPortal(
+    <div className="app-modal fixed inset-0 z-[2000] flex items-end justify-center sm:items-center">
       <div
         className="absolute inset-0 bg-ink/70 backdrop-blur-sm"
         onClick={onClose}
@@ -39,7 +40,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="animate-in relative z-10 flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-ink-3 bg-ink-2 sm:rounded-2xl"
+        className="app-modal-panel animate-in relative z-10 flex max-h-[90%] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-ink-3 bg-ink-2 sm:rounded-2xl"
       >
         <div className="flex shrink-0 items-center justify-between border-b border-ink-3 px-5 py-4">
           <h2 className="display text-lg text-cream">{title}</h2>
@@ -47,10 +48,11 @@ export function Modal({
             <X size={20} />
           </button>
         </div>
-        <div className="min-h-0 overflow-y-auto p-5">{children}</div>
+        <div className="app-modal-scroll min-h-0 overflow-y-auto p-5">{children}</div>
         {footer && <div className="safe-bottom shrink-0 border-t border-ink-3 p-5">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.getElementById('root')!,
   );
 }
 

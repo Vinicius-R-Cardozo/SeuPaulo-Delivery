@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
   appId: 'com.seupaulo.delivery',
   appName: 'Seu Paulo Delivery',
   webDir: 'dist',
-  backgroundColor: '#a42129',
+  backgroundColor: '#121010',
   server: {
     androidScheme: 'https',
   },

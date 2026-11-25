@@ -68,13 +68,33 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Keep native screens and sticky headers below the iPhone status bar. */
-  html.native-app body {
-    padding-top: env(safe-area-inset-top, 0px);
+  html.native-app {
+    --app-viewport-height: 100dvh;
+    --app-viewport-top: 0px;
+    --app-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem);
+    background-color: var(--color-ink);
+    scroll-behavior: auto;
   }
 
-  html.native-app {
-    --app-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem);
+  html.native-app,
+  html.native-app body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .native-app #root {
+    position: fixed;
+    top: var(--app-viewport-top);
+    inset-inline: 0;
+    height: var(--app-viewport-height);
+    background: var(--color-ink);
+    /* Keep fixed headers, footers and dialogs relative to the visible app area. */
+    transform: translateZ(0);
+  }
+
+  .native-app[data-app-keyboard] {
+    --app-safe-bottom: 0px;
   }
 
   ::selection {
@@ -189,6 +209,10 @@
   .input[aria-invalid='true'] {
     border-color: var(--color-danger);
   }
+  /* Keep text fields from zooming the app viewport on focus in iOS. */
+  .native-app .input {
+    font-size: 1rem;
+  }
 
   .label {
     display: block;
@@ -232,6 +256,20 @@
       var(--color-ink)
     );
     content: '';
+  }
+
+  .native-app .app-public-viewport {
+    position: absolute;
+    inset: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
+    overflow: hidden auto;
+  }
+
+  .native-app :is(.app-public-viewport, .app-content, .app-modal-scroll) {
+    overscroll-behavior-y: none;
+  }
+
+  .native-app .app-modal-panel {
+    max-height: calc(100% - env(safe-area-inset-top, 0px) - 0.5rem);
   }
 
   .app-shell {
@@ -301,8 +339,17 @@
     scroll-padding-bottom: calc(var(--tabs-space) + var(--cart-space));
   }
 
-  .app-content:has([aria-modal='true']) {
+  #root:has(.app-modal) :is(.app-content, .app-public-viewport) {
     overflow-y: hidden;
+  }
+
+  .native-app[data-app-keyboard] .app-shell {
+    --tabs-space: 0px;
+    --cart-space: 0px;
+  }
+
+  .native-app[data-app-keyboard] :is(.app-tab-bar, .app-cart-fab, .app-action-footer) {
+    display: none;
   }
 
   .app-action-footer {
@@ -401,7 +448,7 @@
   html.native-app .min-h-dvh,
   html.native-app .min-h-screen,
   html.native-app .app-welcome {
-    min-height: calc(100dvh - env(safe-area-inset-top, 0px));
+    min-height: calc(var(--app-viewport-height) - env(safe-area-inset-top, 0px));
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -419,6 +466,9 @@
   .native-app .pb-32 {
     padding-bottom: calc(8rem + var(--app-safe-bottom));
   }
+  .native-app[data-app-keyboard] .app-content :is(.pb-32, .pb-40) {
+    padding-bottom: 1rem;
+  }
   .animate-in {
     animation: fade-in-up 0.4s var(--ease-out-soft) both;
   }
@@ -431,6 +481,13 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+  .native-app .app-modal-panel {
+    animation-name: modal-fade-in;
+  }
+  @keyframes modal-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
   .shimmer {
     background: linear-gradient(

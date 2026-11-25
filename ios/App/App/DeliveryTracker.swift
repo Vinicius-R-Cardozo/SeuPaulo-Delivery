@@ -4,6 +4,10 @@ import UIKit
 
 final class DeliveryViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
+        overrideUserInterfaceStyle = .dark
+        if #available(iOS 15.0, *), let webView {
+            webView.underPageBackgroundColor = webView.backgroundColor
+        }
         bridge?.registerPluginInstance(DeliveryTracker())
         bridge?.registerPluginInstance(OrderLive())
         bridge?.registerPluginInstance(AppPush())
