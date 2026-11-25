@@ -61,6 +61,11 @@ export function DriverLogin() {
           autoComplete="email"
         />
         <PasswordField value={password} onChange={setPassword} error={errors.password} />
+        <div className="text-right">
+          <Link to="/entregador/recuperar-senha" className="text-sm text-cream-3 hover:text-cream">
+            Esqueci minha senha
+          </Link>
+        </div>
         <Button type="submit" fullWidth size="lg" variant="amber" loading={loading}>
           Entrar
         </Button>

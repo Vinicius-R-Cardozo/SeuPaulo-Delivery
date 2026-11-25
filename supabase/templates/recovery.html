@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="pt-BR">
+  <body style="margin:0;padding:32px 16px;background:#f7f2e8;color:#121010;font-family:Arial,sans-serif">
+    <div style="max-width:500px;margin:0 auto;padding:28px;background:#fff;border-radius:12px">
+      <p style="margin:0 0 20px;color:#a42129;font-weight:bold">Seu Paulo</p>
+      <h1 style="margin:0 0 16px;font-size:26px">Redefina sua senha</h1>
+      {{ if eq .RedirectTo "https://www.seupaulobuteco.com.br/delivery/redefinir-senha" }}
+      <p style="line-height:1.5">Recebemos um pedido de recuperação da sua conta no Seu Paulo Delivery. Abra o link abaixo no celular ou no computador para criar uma nova senha.</p>
+      <p style="margin:24px 0"><a href="https://www.seupaulobuteco.com.br/delivery/redefinir-senha#token_hash={{ .TokenHash }}" style="display:inline-block;padding:14px 22px;background:#a42129;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">Redefinir senha</a></p>
+      {{ else }}
+      <p style="line-height:1.5">Recebemos um pedido para redefinir a senha da sua conta. Use o botão abaixo para continuar.</p>
+      <p style="margin:24px 0"><a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 22px;background:#a42129;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">Redefinir senha</a></p>
+      {{ end }}
+      <p style="margin-bottom:0;color:#554b48;line-height:1.5">Se você não pediu essa alteração, ignore este e-mail.</p>
+    </div>
+  </body>
+</html>

@@ -309,18 +309,6 @@ class SupabaseRepository implements DataRepository {
     await this.sb.auth.signOut();
   }
 
-  async requestPasswordReset(email: string): Promise<void> {
-    const { error } = await this.sb.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset`,
-    });
-    if (error) throw new Error(error.message);
-  }
-
-  async resetPassword(newPassword: string): Promise<void> {
-    const { error } = await this.sb.auth.updateUser({ password: newPassword });
-    if (error) throw new Error(error.message);
-  }
-
   async updateProfile(userId: string, patch: Partial<Profile>): Promise<Profile> {
     const { error } = await this.sb
       .from('profiles')

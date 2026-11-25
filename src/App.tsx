@@ -52,9 +52,11 @@ export function App() {
         <Route path="/cadastro" element={<CustomerRegister />} />
         <Route path="/verificar-email" element={<VerifyEmail />} />
         <Route path="/recuperar-senha" element={<ForgotPassword />} />
-        <Route path="/reset" element={<ResetPassword />} />
+        <Route path="/reset" element={<ResetPassword role="customer" />} />
         <Route path="/entregador/login" element={<DriverLogin />} />
         <Route path="/entregador/cadastro" element={<DriverRegister />} />
+        <Route path="/entregador/recuperar-senha" element={<ForgotPassword role="driver" />} />
+        <Route path="/entregador/reset" element={<ResetPassword role="driver" />} />
       </Route>
 
       {/* ---------- Cliente ---------- */}

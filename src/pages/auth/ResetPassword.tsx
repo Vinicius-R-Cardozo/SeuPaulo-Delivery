@@ -1,71 +1,18 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { AuthShell } from '@/components/layout/AuthShell';
-import { PasswordField } from '@/components/ui/PasswordField';
-import { Button } from '@/components/ui/Button';
-import { repository } from '@/services';
-import { useToast } from '@/providers/ToastProvider';
-import { validatePassword } from '@/utils/validation';
+import { recoveryPaths, type RecoveryRole } from '@/services/passwordRecovery';
 
-export function ResetPassword() {
-  const toast = useToast();
-  const navigate = useNavigate();
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [errors, setErrors] = useState<Record<string, string | null>>({});
-  const [loading, setLoading] = useState(false);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    const next: Record<string, string | null> = {
-      password: validatePassword(password),
-      confirm: password !== confirm ? 'As senhas não coincidem.' : null,
-    };
-    setErrors(next);
-    if (Object.values(next).some(Boolean)) return;
-    setLoading(true);
-    try {
-      await repository.resetPassword(password);
-      toast.success('Senha redefinida! Faça login com a nova senha.');
-      navigate('/login', { replace: true });
-    } catch (err) {
-      toast.error((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
+export function ResetPassword({ role }: { role: RecoveryRole }) {
+  const paths = recoveryPaths[role];
 
   return (
     <AuthShell
-      badge="Nova senha"
-      title="Redefinir senha"
-      subtitle="Escolha uma senha nova e forte."
-      footer={
-        <Link to="/login" className="font-semibold text-brand-2 hover:underline">
-          Voltar ao login
-        </Link>
-      }
+      title="Use o link do e-mail"
+      badge="Recuperação"
+      subtitle="Abra o link que enviamos para definir uma nova senha. Se ele expirou ou já foi usado, solicite outro."
+      footer={<Link to={paths.login} className="font-semibold text-brand-2 hover:underline">Voltar ao login</Link>}
     >
-      <form onSubmit={submit} className="space-y-4" noValidate>
-        <PasswordField
-          label="Nova senha"
-          value={password}
-          onChange={setPassword}
-          error={errors.password}
-          showStrength
-          autoComplete="new-password"
-        />
-        <PasswordField
-          label="Confirmar nova senha"
-          value={confirm}
-          onChange={setConfirm}
-          error={errors.confirm}
-          autoComplete="new-password"
-        />
-        <Button type="submit" fullWidth size="lg" loading={loading}>
-          Redefinir senha
-        </Button>
-      </form>
+      <Link to={paths.request} replace className="btn btn-primary w-full">Solicitar novo link</Link>
     </AuthShell>
   );
 }

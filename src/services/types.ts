@@ -100,8 +100,6 @@ export interface DataRepository {
   signIn(email: string, password: string, role?: Role): Promise<AuthSession>;
   signUp(input: SignUpInput): Promise<AuthSession>;
   signOut(): Promise<void>;
-  requestPasswordReset(email: string): Promise<void>;
-  resetPassword(newPassword: string): Promise<void>;
   updateProfile(userId: string, patch: Partial<Profile>): Promise<Profile>;
   changePassword(userId: string, current: string, next: string): Promise<void>;
   getProfileById(id: string): Promise<Profile | null>;

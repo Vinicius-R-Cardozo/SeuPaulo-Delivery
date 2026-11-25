@@ -1,32 +1,32 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, MailCheck } from 'lucide-react';
 import { AuthShell } from '@/components/layout/AuthShell';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { repository } from '@/services';
-import { useToast } from '@/providers/ToastProvider';
+import { recoveryPaths, requestPasswordRecovery, type RecoveryRole } from '@/services/passwordRecovery';
 import { validateEmail } from '@/utils/validation';
 
-export function ForgotPassword() {
-  const toast = useToast();
-  const navigate = useNavigate();
+export function ForgotPassword({ role = 'customer' }: { role?: RecoveryRole }) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sendError, setSendError] = useState('');
   const [sent, setSent] = useState(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const err = validateEmail(email);
+    if (loading) return;
+    const err = validateEmail(email.trim());
     setError(err);
     if (err) return;
+    setSendError('');
     setLoading(true);
     try {
-      await repository.requestPasswordReset(email);
+      await requestPasswordRecovery(email);
       setSent(true);
     } catch (err) {
-      toast.error((err as Error).message);
+      setSendError(err instanceof Error ? err.message : 'Não foi possível enviar o link agora. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -42,7 +42,7 @@ export function ForgotPassword() {
           : 'Informe seu e-mail e enviaremos um link para redefinir sua senha.'
       }
       footer={
-        <Link to="/login" className="inline-flex items-center gap-1 font-semibold text-brand-2 hover:underline">
+        <Link to={recoveryPaths[role].login} className="inline-flex items-center gap-1 font-semibold text-brand-2 hover:underline">
           <ArrowLeft size={14} /> Voltar ao login
         </Link>
       }
@@ -51,16 +51,19 @@ export function ForgotPassword() {
         <div className="rounded-xl border border-ink-3 bg-ink-2 p-6 text-center">
           <MailCheck size={40} className="mx-auto text-success" />
           <p className="mt-3 text-sm text-cream-3">
-            Se existir uma conta para <span className="font-semibold text-cream">{email}</span>,
-            enviamos um link de redefinição.
+            Se houver uma conta com <span className="font-semibold text-cream">{email.trim()}</span>,
+            esse endereço receberá um link para criar uma nova senha.
+          </p>
+          <p className="mt-3 text-sm text-cream-3">
+            Abra o link no celular ou no computador. Confira também a pasta de spam.
           </p>
           <Button
             variant="ghost"
             fullWidth
             className="mt-5"
-            onClick={() => navigate('/reset', { state: { email } })}
+            onClick={() => setSent(false)}
           >
-            Já tenho o código / redefinir agora
+            Solicitar outro link
           </Button>
         </div>
       ) : (
@@ -75,6 +78,7 @@ export function ForgotPassword() {
             leftIcon={<Mail size={16} />}
             autoComplete="email"
           />
+          {sendError && <p role="alert" className="text-sm text-cream">{sendError}</p>}
           <Button type="submit" fullWidth size="lg" loading={loading}>
             Enviar link
           </Button>

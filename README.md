@@ -110,6 +110,25 @@ O Supabase disponibiliza `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEYS` e
 A função confere a chave pública enviada em `apikey`, pois o cadastro começa
 antes de o cliente ter uma sessão.
 
+### Recuperação de senha do delivery
+
+O link abre `https://www.seupaulobuteco.com.br/delivery/redefinir-senha` no celular
+ou no computador. A página fica no repositório **Seu-Paulo-Buteco**. A pessoa
+confirma o link antes de ver o formulário de nova senha.
+
+1. Publique a página do site com `DELIVERY_SUPABASE_URL` e
+   `DELIVERY_SUPABASE_PUBLISHABLE_KEY` do projeto `seu-delivery`.
+2. No mesmo projeto, adicione a URL HTTPS acima em **Authentication → URL Configuration → Redirect URLs**.
+3. Em **Authentication → Email Templates → Reset password**, use o assunto
+   `Redefina sua senha · Seu Paulo` e o conteúdo de `supabase/templates/recovery.html`.
+   O template usa o link novo para o Delivery e o link padrão para os outros destinos.
+4. Distribua uma build do app com o fluxo novo. Para testar, solicite um novo link
+   pelo app e abra o e-mail em outro dispositivo ou navegador.
+
+O modelo é em português. Para enviar a clientes fora da equipe do projeto e usar
+um remetente do Seu Paulo, configure o SMTP próprio no Supabase com um domínio
+autenticado. Mantenha o rastreamento de cliques desativado para esses e-mails.
+
 ## 🖥️ Painel administrativo (site separado — Vercel)
 
 O admin **não fica dentro do app** — ele é um **site próprio** na pasta `admin/`
