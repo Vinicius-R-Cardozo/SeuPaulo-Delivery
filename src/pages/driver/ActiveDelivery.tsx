@@ -97,15 +97,15 @@ export function ActiveDelivery() {
   };
 
   const submitCode = async () => {
-    const clean = code.replace(/\D/g, '');
-    if (clean.length !== 6) {
-      setCodeError('Digite o código informado pelo cliente.');
+    // Pedidos criados antes da mudança ainda podem ter seis dígitos.
+    if (!/^(?:\d{4}|\d{6})$/.test(code)) {
+      setCodeError('Digite todos os dígitos do código informado pelo cliente.');
       return;
     }
     setWorking(true);
     setCodeError(null);
     try {
-      const res = await repository.confirmDelivery(order.id, clean);
+      const res = await repository.confirmDelivery(order.id, code);
       if (res.ok) {
         setCodeOpen(false);
         setCode('');
@@ -295,7 +295,7 @@ export function ActiveDelivery() {
       >
         <div className="space-y-3">
           <p className="text-sm text-cream-3">
-            Peça ao cliente o código de 6 dígitos que aparece no app dele e digite abaixo.
+            Peça ao cliente o código de entrega que aparece no app dele.
           </p>
           <Input
             label="Código informado pelo cliente"
@@ -310,7 +310,7 @@ export function ActiveDelivery() {
               }
             }}
             inputMode="numeric"
-            placeholder="Ex.: 482731"
+            placeholder="Ex.: 4827"
             leftIcon={<KeyRound size={16} />}
             className="text-center font-mono text-lg tracking-[0.4em]"
           />

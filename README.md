@@ -197,7 +197,9 @@ de recompilar o app.
 
 Depois de `0008_signup_verifications.sql`, aplique `supabase/migrations/20261123163221_delivery_trip_tracking.sql` junto com a atualização do painel e dos apps. Versões anteriores escrevem diretamente em `orders`. A nova versão usa `advance_order` e `confirm_delivery`.
 
-O restaurante confirma o pedido no painel. Um entregador aprovado e online aceita no app, registra a chegada ao restaurante e toca em **Retirei o pedido · Iniciar entrega**. O cliente acompanha no mapa a última posição recebida e seu horário. Ao chegar, o entregador toca em **Cheguei ao cliente** e informa o código de seis dígitos para concluir.
+O restaurante confirma o pedido no painel. Um entregador aprovado e online aceita no app, registra a chegada ao restaurante e toca em **Retirei o pedido · Iniciar entrega**. O cliente acompanha no mapa a última posição recebida e seu horário. Ao chegar, o entregador toca em **Cheguei ao cliente** e informa o código de quatro dígitos para concluir. Os códigos de seis dígitos já emitidos continuam válidos.
+
+Atualize os apps em uso pelos entregadores antes de aplicar `20261125163857_four_digit_delivery_codes.sql`. A versão anterior do app exige seis dígitos para enviar a confirmação.
 
 O Android inicia um serviço de localização com notificação durante o trajeto. O iOS usa Core Location com o modo de localização em segundo plano. Para compilar para iPhone, em um Mac com Xcode e CocoaPods, rode `npm run build`, `npx cap sync ios` e `npx cap open ios`. O navegador usa o GPS enquanto a página está ativa. Após forçar a parada do aplicativo, reabra-o para retomar uma entrega em andamento.
 

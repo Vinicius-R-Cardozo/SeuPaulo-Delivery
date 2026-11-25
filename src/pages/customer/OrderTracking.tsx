@@ -172,7 +172,7 @@ export function OrderTracking() {
           </p>
           <div className="mt-3 flex items-center gap-3">
             <span className="flex-1 rounded-xl bg-ink px-4 py-3 text-center font-mono text-3xl font-bold tracking-[0.3em] text-amber">
-              {deliveryCode ?? '••••••'}
+              {deliveryCode ?? '••••'}
             </span>
             <button
               onClick={copyCode}
