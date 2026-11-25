@@ -3,9 +3,10 @@ import { Download, Monitor, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { getSupabase, kitchenPairingCode } from '@/services/supabase/client';
 import { useToast } from '@/providers/ToastProvider';
+import { kitchenFailureMessage, kitchenNetworkHint } from '@/utils/kitchenPrinting';
 
 type Destination = { mode: 'windows'; queue: string } | { mode: 'tcp'; host: string; port: number };
-type Test = { id: string; at: string; state: string; destination: Destination | null };
+type Test = { id: string; at: string; state: string; destination: Destination | null; failure_code?: string | null };
 type Settings = {
   paired: boolean; managed: boolean; enabled: boolean; machine: string | null; online: boolean;
   last_seen: string | null; queues: string[]; destination: Destination | null; test: Test | null;
@@ -49,6 +50,8 @@ function PrinterForm({ settings, refresh, rpc }: { settings: Settings; refresh: 
     && /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host.trim());
   const valid = mode === 'windows' ? Boolean(queue) : validHost && /^\d+$/.test(port) && Number(port) > 0 && Number(port) <= 65535;
   const testPending = test && ['pending','reserved','sending','retry'].includes(test.state);
+  const testFailure = test?.state === 'retry' || test?.state === 'review';
+  const testReason = kitchenFailureMessage(test?.failure_code);
   const act = async (kind: string) => {
     setBusy(kind);
     try {
@@ -62,7 +65,10 @@ function PrinterForm({ settings, refresh, rpc }: { settings: Settings; refresh: 
         if (!cancelled) toast.info('O envio já avançou. Confira o papel na cozinha.');
       }
       refresh();
-    } catch (e) { toast.error((e as Error).message); }
+    } catch (e) {
+      const message = (e as Error).message;
+      toast.error(kind === 'save' ? message : `${message} ${kitchenNetworkHint}`);
+    }
     finally { setBusy(''); }
   };
   return <>
@@ -102,12 +108,17 @@ function PrinterForm({ settings, refresh, rpc }: { settings: Settings; refresh: 
       <h2 className="display text-2xl">Teste no papel</h2>
       <p className={quiet}>Envie uma via identificada como “TESTE - NAO PREPARAR”. O teste pode ser feito antes de ativar os deliveries automáticos.</p>
       {changed && <p className="text-sm text-amber">Salve o destino antes de testar.</p>}
-      {!settings.online && <p className="text-sm text-amber">O computador precisa estar conectado para iniciar o teste.</p>}
+      {!settings.online && <p className="text-sm text-amber">O computador precisa estar conectado para iniciar o teste.
+        {!testFailure && ` ${kitchenNetworkHint}`}</p>}
       <Button variant="ghost" leftIcon={<Printer size={16} />} disabled={!!busy || !settings.online || changed || !destination || !!testPending}
         loading={busy === 'test'} onClick={() => void act('test')}>Imprimir comanda de teste</Button>
       {test && <div className="space-y-2 border-t border-ink-4 pt-3" role="status">
         <p className={quiet}>Último teste · {localDate(test.at)}{test.destination && ' · ' + destinationName(test.destination)}</p>
-        <p className="text-sm font-semibold">{testLabels[test.state] ?? test.state}</p>
+        <p className="text-sm font-semibold">
+          {test.state === 'retry' && testReason ? `${testReason} O agente tentará novamente.` : testLabels[test.state] ?? test.state}
+        </p>
+        {test.state === 'review' && testReason && <p className={quiet}>{testReason}</p>}
+        {testFailure && <p className="text-sm text-amber">{kitchenNetworkHint}</p>}
         {['pending','reserved','retry'].includes(test.state) &&
           <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => void act('cancel')}>Cancelar teste pendente</Button>}
       </div>}

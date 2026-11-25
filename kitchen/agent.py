@@ -2,6 +2,7 @@
 import argparse
 import base64
 import contextlib
+import errno
 import hashlib
 import json
 import logging
@@ -15,6 +16,11 @@ import urllib.request
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from urllib.parse import urlsplit
+
+
+PAPER_CUT = b"\x1dV\x00"
+# Use standard line spacing and advance the last printed line past the blade.
+RECEIPT_END = b"\x1b2\x1bd\x08" + PAPER_CUT
 
 
 def plain(value):
@@ -44,7 +50,7 @@ def receipt(job):
         if item.get("notes"):
             lines.extend(textwrap.wrap("   OBS: " + plain(item["notes"]), width, subsequent_indent="        "))
         lines.append("")
-    return ("\n".join(lines) + "\n\n\n").encode("ascii") + b"\x1dV\x00"
+    return "\n".join(lines).encode("ascii") + RECEIPT_END
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -68,8 +74,38 @@ class KitchenAPI:
             body = response.read()
             return json.loads(body) if body else None
 
-    def update(self, lease, action):
-        return self.call("update_kitchen_ticket", {"p_lease": lease, "p_action": action})
+    def update(self, lease, action, failure_code=None):
+        args = {"p_lease": lease, "p_action": action}
+        if failure_code:
+            args["p_failure_code"] = failure_code
+        return self.call("update_kitchen_ticket", args)
+
+
+class PrinterFailure(Exception):
+    """A known printer failure safe to report in the panel."""
+
+
+def printer_failure_code(exc, mode, dispatch_started):
+    if isinstance(exc, PrinterFailure):
+        return str(exc)
+    if mode == "tcp" and not dispatch_started:
+        error = getattr(exc, "winerror", None) or getattr(exc, "errno", None)
+        if isinstance(exc, TimeoutError) or error in (errno.ETIMEDOUT, 10060):
+            return "tcp_timeout"
+        if isinstance(exc, ConnectionRefusedError) or error in (errno.ECONNREFUSED, 10061):
+            return "tcp_refused"
+        if error in (errno.ENETDOWN, errno.ENETUNREACH, errno.EHOSTUNREACH, 10050, 10051, 10065):
+            return "tcp_unreachable"
+        return "tcp_connect_failed"
+    if mode == "windows":
+        error = getattr(exc, "winerror", None)
+        if error == 1801:  # ERROR_INVALID_PRINTER_NAME
+            return "queue_not_found"
+        if error == 5:  # ERROR_ACCESS_DENIED
+            return "queue_access_denied"
+        if not dispatch_started:
+            return "queue_unavailable"
+    return "send_failed" if dispatch_started else "printer_unavailable"
 
 
 @contextlib.contextmanager
@@ -82,27 +118,32 @@ def printer(config):
         handle = win32print.OpenPrinter(config["queue"])
         try:
             status = win32print.GetPrinter(handle, 2)["Status"]
-            blocked = (win32print.PRINTER_STATUS_PAUSED | win32print.PRINTER_STATUS_ERROR |
-                       win32print.PRINTER_STATUS_PAPER_OUT | win32print.PRINTER_STATUS_PAPER_JAM |
-                       win32print.PRINTER_STATUS_OFFLINE)
-            if status & blocked:
-                raise OSError("Fila de impressão indisponível")
+            for flag, code in (
+                (win32print.PRINTER_STATUS_PAPER_OUT, "paper_out"),
+                (win32print.PRINTER_STATUS_PAPER_JAM, "paper_jam"),
+                (win32print.PRINTER_STATUS_OFFLINE, "printer_offline"),
+                (win32print.PRINTER_STATUS_PAUSED, "queue_paused"),
+                (win32print.PRINTER_STATUS_ERROR, "queue_unavailable"),
+            ):
+                if status & flag:
+                    raise PrinterFailure(code)
             def write(data):
                 win32print.StartDocPrinter(handle, 1, ("Seu Paulo - Delivery", None, "RAW"))
                 try:
                     win32print.StartPagePrinter(handle)
                     if win32print.WritePrinter(handle, data) != len(data):
-                        raise OSError("Envio parcial")
+                        raise PrinterFailure("partial_write")
                     win32print.EndPagePrinter(handle)
                     win32print.EndDocPrinter(handle)
                 except Exception:
-                    win32print.AbortPrinter(handle)
+                    with contextlib.suppress(Exception):
+                        win32print.AbortPrinter(handle)
                     raise
             yield write
         finally:
             win32print.ClosePrinter(handle)
     else:
-        raise ValueError("Destino de impressão inválido")
+        raise PrinterFailure("invalid_destination")
 
 
 def process_one(api, config):
@@ -115,22 +156,30 @@ def process_one(api, config):
     except (KeyError, ValueError, TypeError):
         # Invalid snapshots need operator review, not an endless automatic retry.
         if api.update(lease, "begin"):
-            api.update(lease, "review")
+            api.update(lease, "review", "invalid_ticket")
         logging.error("Confira os itens da comanda no painel.")
         return True
     dispatch_started = False
+    authorizing = False
+    destination = job.get("destination", config)
     try:
-        with printer(job.get("destination", config)) as write:
+        with printer(destination) as write:
             started = time.monotonic()
-            if not api.update(lease, "begin"):
+            authorizing = True
+            authorized = api.update(lease, "begin")
+            authorizing = False
+            if not authorized:
                 return True
             dispatch_started = True
             if time.monotonic() - started > 30:
-                raise TimeoutError("Autorização de envio expirou")
+                raise PrinterFailure("authorization_timeout")
             write(data)
     except Exception as exc:
-        logging.warning("Falha na impressora (%s)", type(exc).__name__)
-        api.update(lease, "review" if dispatch_started else "retry")
+        code = "authorization_failed" if authorizing else printer_failure_code(
+            exc, destination.get("mode"), dispatch_started
+        )
+        logging.warning("Falha de impressão: %s (%s)", code, type(exc).__name__)
+        api.update(lease, "review" if dispatch_started else "retry", code)
         return True
     # If this ACK is lost, the server keeps the job for review. Never resend the bytes.
     api.update(lease, "sent")

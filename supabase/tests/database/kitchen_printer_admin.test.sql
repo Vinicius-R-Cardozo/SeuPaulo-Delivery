@@ -46,6 +46,15 @@ begin
   if result#>>'{ticket,code}' is distinct from '#TESTE' or result#>>'{destination,queue}' is distinct from 'Cozinha' then
     raise exception 'Teste físico sem destino correto';
   end if;
+  if not public.update_kitchen_ticket((result->>'lease')::uuid,'retry','paper_out') then
+    raise exception 'Falha do teste não registrada';
+  end if;
+  if (public.kitchen_printer_settings(grant_key)->'test' @> '{"state":"retry","failure_code":"paper_out"}') is not true then
+    raise exception 'Configuração não retornou a causa do erro de impressão';
+  end if;
+  update kitchen_print.jobs set available_at=now() where id=test_id;
+  result:=public.claim_kitchen_ticket();
+  if result->>'lease' is null then raise exception 'Nova reserva do teste não criada'; end if;
   if not public.cancel_kitchen_test(grant_key,test_id) then raise exception 'Reserva não cancelada'; end if;
   if public.update_kitchen_ticket((result->>'lease')::uuid,'begin') then raise exception 'Imprimiu teste cancelado'; end if;
   perform set_config('request.jwt.claims',jsonb_build_object('sub',actor,'session_id',gen_random_uuid())::text,true);

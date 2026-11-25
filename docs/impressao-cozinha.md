@@ -53,7 +53,8 @@ Para migrar uma instalação anterior, use o mesmo fluxo. Gerar o código manté
 - **Enviada à impressora** indica aceite dos bytes pelo destino local. Em uma fila Windows, a bobina pode acabar depois do aceite. Confira o spooler e o papel antes de pedir outra via.
 - **Confira na cozinha** aparece após falha durante o envio ou após dois minutos sem confirmação do agente. A via original sai da repetição automática. Após conferir o papel, o atendente pode solicitar **Reimprimir comanda** no detalhe do pedido. A segunda via é identificada no papel.
 - Cancelar ou finalizar o pedido retira da fila trabalhos que ainda aguardavam envio. Se a comanda já foi encaminhada, avise a cozinha em caso de cancelamento.
-- O texto de preparo é normalizado para caracteres latinos sem acento, com quebra de linha. O agente envia o comando de corte no fim de cada documento.
+- O agente imprime todos os itens, adicionais e observações, avança o papel com o espaçamento padrão e aciona a guilhotina uma vez por comanda. Confira no papel o corte abaixo da última linha em uma comanda curta e em outra com vários itens.
+- Ao ocorrer uma falha, o painel informa a causa disponível e orienta a conferir se o computador do restaurante está na rede **SEU PAULO SYSTEM**. As versões anteriores do agente continuam imprimindo e exibem avisos genéricos até a instalação do pacote atualizado.
 
 ## Manutenção
 

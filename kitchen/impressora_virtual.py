@@ -9,7 +9,7 @@ from collections import deque
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from agent import printer, receipt
+from agent import PAPER_CUT, RECEIPT_END, printer, receipt
 
 
 class Receiver(socketserver.BaseRequestHandler):
@@ -30,8 +30,9 @@ class Receiver(socketserver.BaseRequestHandler):
             return
         if not data or len(data) > 65536:
             return
-        cut = data.endswith(b"\x1dV\x00")
-        body = data[:-3] if cut else data
+        cut = data.endswith(PAPER_CUT)
+        trailer = RECEIPT_END if data.endswith(RECEIPT_END) else PAPER_CUT
+        body = data[:-len(trailer)] if cut else data
         text = "".join(chr(b) if 32 <= b <= 126 or b == 10 else "?" for b in body)
         stamp = datetime.now().strftime("%H:%M:%S")
         with self.server.lock:

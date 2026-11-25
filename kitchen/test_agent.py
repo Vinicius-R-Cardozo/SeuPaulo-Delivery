@@ -1,8 +1,13 @@
 import contextlib
+import errno
+import socketserver
+import threading
 import unittest
+from collections import deque
 from unittest.mock import Mock, patch
 
 import agent
+from impressora_virtual import Receiver
 
 
 class KitchenAgentTests(unittest.TestCase):
@@ -22,8 +27,8 @@ class KitchenAgentTests(unittest.TestCase):
 
     def test_single_ticket_with_wrapped_notes_and_only_cut_command(self):
         data = agent.receipt(self.job)
-        self.assertTrue(data.endswith(b"\x1dV\x00"))
-        text = data[:-3].decode("ascii")
+        self.assertTrue(data.endswith(b"\x1b2\x1bd\x08\x1dV\x00"))
+        text = data[:-len(agent.RECEIPT_END)].decode("ascii")
         self.assertTrue(all(len(line) <= 42 for line in text.splitlines()))
         for value in ("DELIVERY #AB12", "2x Feijao", "+ Farofa", "OBS: Sem cebola"):
             self.assertIn(value, text)
@@ -32,16 +37,50 @@ class KitchenAgentTests(unittest.TestCase):
         self.job["copy"] = 1
         self.assertIn(b"REIMPRESSAO 1", agent.receipt(self.job))
 
-    def test_before_send_failure_retries(self):
-        with patch.object(agent, "printer", side_effect=OSError):
-            agent.process_one(self.api, {})
-        self.assertEqual(self.actions(), ["retry"])
+    def test_short_and_long_tickets_cut_once_after_last_line_over_tcp(self):
+        with socketserver.TCPServer(("127.0.0.1", 0), Receiver) as receiver:
+            receiver.lock = threading.Lock()
+            receiver.receipts = deque(maxlen=3)
+            receiver.timeout = 2
+            host, port = receiver.server_address
+            self.job["destination"] = {"mode": "tcp", "host": host, "port": port}
+            for count in (1, 18):
+                items = [{"product": {"name": f"Item {i}"}, "quantity": 1} for i in range(count)]
+                items[-1]["notes"] = "Ultima observacao"
+                self.job["ticket"]["items"] = items
+                expected = agent.receipt(self.job)
+                self.assertEqual(expected.count(b"\x1dV\x00"), 1)
+                self.assertTrue(expected.endswith(b"Ultima observacao\n" + agent.RECEIPT_END))
+                agent.process_one(self.api, {})
+                receiver.handle_request()
 
-    def test_partial_write_requires_review(self):
+        self.assertEqual(self.actions(), ["begin", "sent", "begin", "sent"])
+        self.assertEqual(len(receiver.receipts), 2)
+        long_receipt, short_receipt = receiver.receipts
+        self.assertGreater(long_receipt[1], short_receipt[1])
+        for _, _, cut, text in receiver.receipts:
+            self.assertTrue(cut)
+            self.assertTrue(text.endswith("OBS: Ultima observacao"))
+
+    def test_before_send_failure_retries(self):
+        for error, code in (
+            (TimeoutError, "tcp_timeout"),
+            (ConnectionRefusedError, "tcp_refused"),
+            (OSError(errno.EHOSTUNREACH, "host unreachable"), "tcp_unreachable"),
+            (OSError, "tcp_connect_failed"),
+        ):
+            with self.subTest(code=code):
+                self.api.reset_mock()
+                with patch.object(agent.socket, "create_connection", side_effect=error):
+                    agent.process_one(self.api, {"mode": "tcp", "host": "127.0.0.1", "port": 9100})
+                self.api.update.assert_called_once_with("lease", "retry", code)
+
+    def test_interrupted_write_requires_review(self):
         write = Mock(side_effect=OSError)
         with patch.object(agent, "printer", return_value=contextlib.nullcontext(write)):
             agent.process_one(self.api, {})
         self.assertEqual(self.actions(), ["begin", "review"])
+        self.api.update.assert_called_with("lease", "review", "send_failed")
         write.assert_called_once()
 
     def test_cancelled_reservation_does_not_write(self):
@@ -80,7 +119,7 @@ class KitchenAgentTests(unittest.TestCase):
             self.api.reset_mock()
             spooler.GetPrinter.return_value = {"Status": spooler.PRINTER_STATUS_PAPER_OUT}
             agent.process_one(self.api, config)
-            self.assertEqual(self.actions(), ["retry"])
+            self.api.update.assert_called_once_with("lease", "retry", "paper_out")
             spooler.WritePrinter.assert_called_once()
 
 

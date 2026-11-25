@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getSupabase, isSupabaseConfigured } from '@/services/supabase/client';
 
-type KitchenAlert = { order_id: string; code: string; kind: 'delayed' | 'review' };
+type KitchenAlert = { order_id: string; code: string; kind: 'delayed' | 'review'; failure_code?: string | null };
 
 export function useKitchenOrderAlerts() {
   const [alerts, setAlerts] = useState<KitchenAlert[]>([]);

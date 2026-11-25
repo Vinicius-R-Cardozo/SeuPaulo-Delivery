@@ -16,6 +16,9 @@ begin
     values(actor,actor::text||'@example.invalid','{}');
   update public.profiles set role='admin' where id=actor;
   perform set_config('request.jwt.claim.sub',actor::text,true);
+  perform public.accept_legal_documents(
+    (select revision from legal_internal.current_documents() where kind='terms'),
+    (select revision from legal_internal.current_documents() where kind='privacy'));
   insert into kitchen_print.device(secret_hash) values(encode(sha256(convert_to(token,'UTF8')),'hex'))
     on conflict(singleton) do update set secret_hash=excluded.secret_hash;
   perform set_config('request.headers',jsonb_build_object('x-kitchen-key',token)::text,true);
@@ -32,17 +35,21 @@ begin
   job := public.claim_kitchen_ticket();
   perform pg_temp.check_that(job->'ticket'->>'code'='#QA1' and job->>'copy'='0','original após aceite');
   perform pg_temp.check_that(public.claim_kitchen_ticket() is null,'reserva exclusiva');
-  perform pg_temp.check_that(public.update_kitchen_ticket((job->>'lease')::uuid,'retry'),'falha anterior ao envio');
-  perform pg_temp.check_that(exists(select from public.kitchen_order_alerts() where order_id=delivery and kind='delayed'),'falha de conexão avisa imediatamente');
+  perform pg_temp.check_that(public.update_kitchen_ticket((job->>'lease')::uuid,'retry','tcp_refused'),'falha anterior ao envio');
+  perform pg_temp.check_that(exists(select from public.kitchen_order_alerts()
+    where order_id=delivery and kind='delayed' and failure_code='tcp_refused'),'lista identifica a falha imediatamente');
+  perform pg_temp.check_that(public.kitchen_ticket_status(delivery)->>'failure_code'='tcp_refused','detalhe identifica a falha');
   perform pg_temp.check_that(public.claim_kitchen_ticket() is null,'espera antes da próxima tentativa');
   update kitchen_print.jobs set available_at=now() where id=original;
   job := public.claim_kitchen_ticket();
   perform pg_temp.check_that(public.update_kitchen_ticket((job->>'lease')::uuid,'begin'),'início autorizado');
+  perform pg_temp.check_that(public.kitchen_ticket_status(delivery)->>'failure_code' is null,'início limpa erro anterior');
   perform pg_temp.check_that(not exists(select from public.kitchen_order_alerts() where order_id=delivery),'envio dentro do prazo');
   perform pg_temp.check_that(not public.update_kitchen_ticket((job->>'lease')::uuid,'begin'),'início único');
   update kitchen_print.jobs set available_at=now() where id=original;
   perform pg_temp.check_that(public.claim_kitchen_ticket() is null,'envio incerto nunca repete sozinho');
-  perform pg_temp.check_that(public.kitchen_ticket_status(delivery)->>'state'='review','painel pede conferência');
+  perform pg_temp.check_that(public.kitchen_ticket_status(delivery) @> '{"state":"review","failure_code":"confirmation_timeout"}',
+    'painel pede conferência por falta de confirmação');
   perform pg_temp.check_that(exists(select from public.kitchen_order_alerts() where order_id=delivery and kind='review'),'lista pede conferência');
   perform pg_temp.check_that(public.reprint_kitchen_ticket(delivery,original),'segunda via manual');
   perform pg_temp.check_that(not exists(select from public.kitchen_order_alerts() where order_id=delivery),'via anterior não mantém aviso');

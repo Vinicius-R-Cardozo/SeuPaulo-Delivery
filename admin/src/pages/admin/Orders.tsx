@@ -12,6 +12,7 @@ import { PaymentStatusBadge } from '@/components/ui/StatusBadge';
 import { formatBRL, formatDateTime } from '@/utils/format';
 import { nextStatus, ORDER_STATUS_META } from '@/utils/status';
 import { cn } from '@/utils/cn';
+import { kitchenFailureMessage, kitchenNetworkHint } from '@/utils/kitchenPrinting';
 
 const columns: { key: string; label: string; tint: string; statuses: OrderStatus[] }[] = [
   { key: 'new', label: 'Novos', tint: 'border-t-brand-2', statuses: ['received'] },
@@ -118,8 +119,10 @@ export function AdminOrders() {
             className="rounded-md border border-ink-5 px-2 py-1.5 text-left text-xs hover:border-amber"
             onClick={() => { setHistory(false); setSearch(alert.code); setType(''); setSelectedId(alert.order_id); }}>
             <strong>{alert.code}</strong> · {kitchenLabels[alert.kind]}
+            <span className="block">{kitchenFailureMessage(alert.failure_code)}</span>
           </button>)}
         </div>
+        <p className="text-xs text-amber">{kitchenNetworkHint}</p>
       </section>}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div aria-label="Visualização de pedidos" className="flex gap-1 rounded-lg border border-ink-4 bg-ink-2 p-1">

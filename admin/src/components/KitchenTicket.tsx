@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getSupabase } from '@/services/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/providers/ToastProvider';
+import { kitchenFailureMessage, kitchenNetworkHint } from '@/utils/kitchenPrinting';
 
 const labels = {
   pending: 'Na fila da cozinha',
@@ -12,7 +13,7 @@ const labels = {
   retry: 'Impressora indisponível. Nova tentativa automática.',
   cancelled: 'Envio cancelado',
 };
-type Ticket = { id: string; copy: number; state: keyof typeof labels };
+type Ticket = { id: string; copy: number; state: keyof typeof labels; failure_code?: string | null };
 
 export function KitchenTicket({ orderId, closed }: { orderId: string; closed: boolean }) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -49,7 +50,7 @@ export function KitchenTicket({ orderId, closed }: { orderId: string; closed: bo
       if (data) toast.success('Segunda via solicitada.');
       else toast.info('A situação da comanda mudou. Confira o estado atual.');
     } catch {
-      toast.error('Falha ao solicitar segunda via. Confira a fila antes de tentar novamente.');
+      toast.error(`Falha ao solicitar segunda via. Confira a fila antes de tentar novamente. ${kitchenNetworkHint}`);
     } finally {
       setSaving(false);
       setRevision(value => value + 1);
@@ -57,11 +58,16 @@ export function KitchenTicket({ orderId, closed }: { orderId: string; closed: bo
   };
 
   if (!ticket && !failed) return null;
+  const reason = kitchenFailureMessage(ticket?.failure_code);
+  const printingFailed = ticket?.state === 'retry' || ticket?.state === 'review';
+  const status = ticket?.state === 'retry' && reason ? `${reason} Nova tentativa automática.` : ticket && labels[ticket.state];
   return <section className="space-y-2 border-t border-ink-4 pt-3">
     <h3 className="font-semibold">Comanda da cozinha</h3>
     <p role="status" className="text-xs text-cream-3">
       {failed ? 'Não foi possível consultar a fila da cozinha.' :
-        ticket && <>{ticket.copy > 0 && `Reimpressão ${ticket.copy} · `}{labels[ticket.state]}</>}
+        ticket && <>{ticket.copy > 0 && `Reimpressão ${ticket.copy} · `}{status}</>}
+      {!failed && ticket?.state === 'review' && reason && <span className="block">{reason}</span>}
+      {printingFailed && <span className="block text-amber">{kitchenNetworkHint}</span>}
     </p>
     {!failed && !closed && ticket && ['sent','review'].includes(ticket.state) &&
       <Button variant="ghost" size="sm" loading={saving} onClick={reprint}>Reimprimir comanda</Button>}
