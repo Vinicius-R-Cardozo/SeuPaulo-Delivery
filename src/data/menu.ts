@@ -45,6 +45,6 @@ export const PRODUCTS = [
       [escolha('opcao', 'Escolha uma opção', [['grao-de-bico', 'Grão-de-bico'], ['soja', 'Soja']])], diasFixos],
   ]),
   ...produtos('porcoes', [
-    ['fritas', 'Fritas', 25.00, 'Batata frita crocante.'],
+    ['fritas', 'Fritas', 25.00, 'Batata frita crocante.', [], diasFixos],
   ]),
 ];
