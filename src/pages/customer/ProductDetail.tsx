@@ -4,6 +4,7 @@ import { ArrowLeft, Check } from 'lucide-react';
 import type { AddonGroup, Product, SelectedAddon } from '@/types';
 import { repository } from '@/services';
 import { useCart } from '@/contexts/CartContext';
+import { isProductAvailableToday, useMenuWeekday } from '@/hooks/useMenuWeekday';
 import { useToast } from '@/providers/ToastProvider';
 import { Button } from '@/components/ui/Button';
 import { QuantityStepper } from '@/components/ui/QuantityStepper';
@@ -20,6 +21,7 @@ export function ProductDetail() {
   const navigate = useNavigate();
   const { addItem } = useCart();
   const toast = useToast();
+  const weekday = useMenuWeekday();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ export function ProductDetail() {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, weekday]);
 
   const toggle = (group: AddonGroup, optionId: string) => {
     setSelections((prev) => {
@@ -83,7 +85,10 @@ export function ProductDetail() {
   }, [product, selections]);
 
   const add = () => {
-    if (!product) return;
+    if (!product || !isProductAvailableToday(product)) {
+      toast.error('Este produto está indisponível no momento.');
+      return;
+    }
     if (missing.length > 0) {
       toast.error(`Escolha: ${missing.map((g) => g.name).join(', ')}`);
       return;
@@ -94,21 +99,24 @@ export function ProductDetail() {
   };
 
   if (loading) return <FullScreenLoader />;
-  if (!product)
+  if (!product || !isProductAvailableToday(product, weekday))
     return (
       <EmptyState
         emoji="🤔"
-        title="Produto não encontrado"
+        title="Produto indisponível"
         action={<Button onClick={() => navigate('/app/cardapio')}>Ver cardápio</Button>}
       />
     );
 
   return (
     <div className="pb-32">
-      {/* Imagem + voltar */}
-      <div className="relative">
-        <img src={product.image} alt={product.name} className="h-60 w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink to-transparent" />
+      <div className="relative min-h-14">
+        {product.image && product.image !== '/mark.png' && (
+          <>
+            <img src={product.image} alt={product.name} className="h-60 w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-ink to-transparent" />
+          </>
+        )}
         <button
           onClick={() => navigate(-1)}
           className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-ink/70 text-cream backdrop-blur"

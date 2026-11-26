@@ -48,6 +48,7 @@ export type CategorySlug =
   | 'porcoes'
   | 'pratos'
   | 'lanches'
+  | 'sobremesas'
   | 'drinks'
   | 'cervejas'
   | 'bebidas';
@@ -89,6 +90,7 @@ export interface Product {
   price: number;
   image: string;
   available: boolean;
+  availableWeekdays?: number[] | null;
   serves?: string;
   tags?: string[];
   popular?: boolean;

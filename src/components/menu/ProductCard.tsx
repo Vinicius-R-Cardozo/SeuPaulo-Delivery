@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import type { Product } from '@/types';
 import { formatBRL } from '@/utils/format';
 import { useCart } from '@/contexts/CartContext';
+import { isProductAvailableToday } from '@/hooks/useMenuWeekday';
 import { useToast } from '@/providers/ToastProvider';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/utils/cn';
@@ -13,13 +14,17 @@ export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const toast = useToast();
 
+  const hasPhoto = product.image && product.image !== '/mark.png';
   const needsCustomization = product.addonGroups.some((g) => g.required);
 
   const open = () => navigate(`/app/produto/${product.id}`);
 
   const quickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!product.available) return;
+    if (!isProductAvailableToday(product)) {
+      toast.error('Este produto está indisponível no momento.');
+      return;
+    }
     if (needsCustomization) {
       open();
       return;
@@ -59,17 +64,22 @@ export function ProductCard({ product }: { product: Product }) {
         )}
       </div>
 
-      <div className="relative shrink-0">
-        <img
-          src={product.image}
-          alt={product.name}
-          loading="lazy"
-          className="h-24 w-24 rounded-xl object-cover"
-        />
+      <div className="relative shrink-0 self-center">
+        {hasPhoto && (
+          <img
+            src={product.image}
+            alt={product.name}
+            loading="lazy"
+            className="h-24 w-24 rounded-xl object-cover"
+          />
+        )}
         {product.available && (
           <span
             onClick={quickAdd}
-            className="absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-full bg-brand text-cream shadow-boteco transition-transform hover:scale-105"
+            className={cn(
+              'flex h-9 w-9 items-center justify-center rounded-full bg-brand text-cream shadow-boteco transition-transform hover:scale-105',
+              hasPhoto && 'absolute -bottom-2 -right-2',
+            )}
             aria-label={`Adicionar ${product.name}`}
           >
             <Plus size={18} />

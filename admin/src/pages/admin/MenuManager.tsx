@@ -10,7 +10,18 @@ import { formatBRL } from '@/utils/format';
 import { uid } from '@/utils/id';
 import { cn } from '@/utils/cn';
 
+const WEEKDAYS = [
+  { id: 1, label: 'Segunda' },
+  { id: 2, label: 'Terça' },
+  { id: 3, label: 'Quarta' },
+  { id: 4, label: 'Quinta' },
+  { id: 5, label: 'Sexta' },
+  { id: 6, label: 'Sábado' },
+  { id: 0, label: 'Domingo' },
+];
+
 const IMAGE_PRESETS = [
+  '/mark.png',
   '/menu-comidas.jpg',
   '/prato.jpg',
   '/menu-caipirinhas.jpg',
@@ -88,11 +99,18 @@ export function MenuManager() {
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {items.map((p) => (
                     <div key={p.id} className={cn('card flex gap-3 p-3', !p.available && 'opacity-60')}>
-                      <img src={p.image} alt="" className="h-20 w-20 shrink-0 rounded-lg object-cover" />
+                      {p.image && p.image !== IMAGE_PRESETS[0] && (
+                        <img src={p.image} alt="" className="h-20 w-20 shrink-0 rounded-lg object-cover" />
+                      )}
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold text-cream">{p.name}</p>
                         <p className="font-mono text-sm text-amber">{formatBRL(p.price)}</p>
                         <p className="mt-1 line-clamp-2 text-xs text-cream-3">{p.description}</p>
+                        {p.availableWeekdays && (
+                          <p className="mt-1 text-xs text-cream-2">
+                            {WEEKDAYS.filter(({ id }) => p.availableWeekdays?.includes(id)).map(({ label }) => label).join(', ')}
+                          </p>
+                        )}
                         <div className="mt-2 flex gap-1">
                           <IconBtn label={p.available ? 'Tornar indisponível' : 'Tornar disponível'} onClick={() => toggleAvailability(p)}>
                             {p.available ? <Eye size={15} /> : <EyeOff size={15} />}
@@ -193,6 +211,7 @@ function ProductEditor({
     popular: initial?.popular ?? false,
     isNew: initial?.isNew ?? false,
     available: initial?.available ?? true,
+    availableWeekdays: initial?.availableWeekdays ?? [],
   });
   const [saving, setSaving] = useState(false);
 
@@ -212,6 +231,7 @@ function ProductEditor({
         price,
         image: form.image,
         available: form.available,
+        availableWeekdays: form.availableWeekdays.length ? form.availableWeekdays : null,
         serves: form.serves.trim() || undefined,
         popular: form.popular,
         isNew: form.isNew,
@@ -296,6 +316,26 @@ function ProductEditor({
             ))}
           </div>
         </div>
+
+        <fieldset>
+          <legend className="label">Dias de venda</legend>
+          <p className="mb-2 text-xs text-cream-3">Sem seleção, o produto fica disponível todos os dias.</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {WEEKDAYS.map(({ id, label }) => (
+              <Toggle
+                key={id}
+                label={label}
+                checked={form.availableWeekdays.includes(id)}
+                onChange={(checked) => setForm((f) => ({
+                  ...f,
+                  availableWeekdays: checked
+                    ? [...f.availableWeekdays, id]
+                    : f.availableWeekdays.filter((day) => day !== id),
+                }))}
+              />
+            ))}
+          </div>
+        </fieldset>
 
         {/* Flags */}
         <div className="flex flex-wrap gap-4">

@@ -36,7 +36,7 @@ export function Menu() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar petiscos, porções, drinks…"
+            placeholder="Buscar no cardápio…"
             className="input pl-10 pr-10"
           />
           {query && (

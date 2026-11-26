@@ -1,42 +1,28 @@
-/**
- * Gera supabase/migrations/0003_seed.sql a partir dos dados reais do cardápio
- * (src/data/menu.ts). Rode com: npm run gen:seed
- */
-import { writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+/** Emite o SQL do catálogo a partir dos PDFs transcritos em src/data/menu.ts. */
 import { CATEGORIES, PRODUCTS } from '../src/data/menu.ts';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const q = (s: string) => `'${String(s).replace(/'/g, "''")}'`;
-const json = (v: unknown) => `'${JSON.stringify(v).replace(/'/g, "''")}'::jsonb`;
-const arr = (a: string[] = []) =>
-  `array[${a.map((x) => q(x)).join(',')}]::text[]`;
+const marker = '-- Catálogo gerado por npm run gen:seed a partir de src/data/menu.ts.';
+const q = (s: string) => "'" + s.replaceAll("'", "''") + "'";
+const categories = CATEGORIES.map(({ id, slug, name, emoji, sortOrder }) =>
+  '  (' + [q(id), q(slug), q(name), q(emoji), sortOrder].join(', ') + ')',
+);
+const products = PRODUCTS.map(({ id, categorySlug, name, description, price, image, available, addonGroups, availableWeekdays }) => {
+  const weekdays = availableWeekdays ? 'array[' + availableWeekdays.join(',') + ']::smallint[]' : 'null';
+  return '  (' + [
+    q(id), q(categorySlug), q(name), q(description), price.toFixed(2), q(image), available,
+    q(JSON.stringify(addonGroups)) + '::jsonb', weekdays,
+  ].join(', ') + ')';
+});
 
-let sql = `-- =====================================================================
--- Seu Paulo Delivery — Seed do cardápio (gerado automaticamente).
--- NÃO edite à mão: rode "npm run gen:seed". Rode após 0002_rls.sql.
--- =====================================================================
-
-`;
-
-sql += '-- Categorias\n';
-for (const c of CATEGORIES) {
-  sql += `insert into public.categories (id, slug, name, emoji, sort_order) values (${q(c.id)}, ${q(
-    c.slug,
-  )}, ${q(c.name)}, ${q(c.emoji)}, ${c.sortOrder}) on conflict (id) do update set name=excluded.name, emoji=excluded.emoji, sort_order=excluded.sort_order;\n`;
-}
-
-sql += '\n-- Produtos\n';
-for (const p of PRODUCTS) {
-  sql += `insert into public.products (id, category_slug, name, description, price, image, available, serves, tags, popular, is_new, addon_groups) values (${q(
-    p.id,
-  )}, ${q(p.categorySlug)}, ${q(p.name)}, ${q(p.description)}, ${p.price}, ${q(p.image)}, ${p.available}, ${
-    p.serves ? q(p.serves) : 'null'
-  }, ${arr(p.tags)}, ${!!p.popular}, ${!!p.isNew}, ${json(p.addonGroups)}) on conflict (id) do update set name=excluded.name, description=excluded.description, price=excluded.price, image=excluded.image, available=excluded.available, serves=excluded.serves, tags=excluded.tags, popular=excluded.popular, is_new=excluded.is_new, addon_groups=excluded.addon_groups;\n`;
-}
-
-
-const out = resolve(__dirname, '../supabase/migrations/0003_seed.sql');
-writeFileSync(out, sql, 'utf8');
-console.log(`Seed gerado: ${out} (${CATEGORIES.length} categorias, ${PRODUCTS.length} produtos)`);
+const sql = [
+  marker,
+  'insert into public.categories (id, slug, name, emoji, sort_order) values',
+  categories.join(',\n'),
+  'on conflict (slug) do update set name = excluded.name;',
+  '',
+  'insert into public.products (id, category_slug, name, description, price, image, available, addon_groups, available_weekdays) values',
+  products.join(',\n'),
+  'on conflict (id) do nothing;',
+  '',
+].join('\n');
+process.stdout.write(sql);

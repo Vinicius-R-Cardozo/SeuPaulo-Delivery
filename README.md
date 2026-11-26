@@ -44,6 +44,9 @@ cardápio, carrinho, cupons, pagamento, acompanhamento de pedido e **acompanhame
 O app do cliente/entregador e o painel usam o Supabase para catálogo,
 autenticação, endereços, pedidos e entregas.
 
+Os itens e preços iniciais seguem o [cardápio da casa](https://www.seupaulobuteco.com.br/cardapiofinal.pdf) e o [PDF de almoço](https://www.seupaulobuteco.com.br/almoco.pdf).
+O almoço programado segue o calendário da casa de terça a sexta. A programação variável de sábado e domingo é definida pela equipe no painel do delivery.
+
 ## 🚀 1. Como instalar
 
 ```bash
@@ -80,9 +83,10 @@ Mantenha `sb_secret_...`, `service_role` e tokens de pagamento nas variáveis do
 2. No **SQL Editor**, rode os arquivos de `supabase/migrations/` **nesta ordem**:
    1. `0001_init.sql` — tabelas, índices, triggers e Realtime.
    2. `0002_rls.sql` — Row Level Security (segurança por papel).
-   3. `0003_seed.sql` — cardápio real + cupons (gerado por `npm run gen:seed`).
+   3. `0003_seed.sql` — dados iniciais históricos.
    4. `0005_delivery_codes.sql`, `0006_driver_applications.sql`, `0007_driver_auto_approval.sql` e `0008_signup_verifications.sql`.
    5. `20261123163221_delivery_trip_tracking.sql` — etapas da entrega e localização ao vivo.
+   6. Aplique as demais migrações na ordem do diretório. A migração `20261126131404_cardapio_real_disponibilidade.sql` carrega o catálogo oficial e arquiva os registros de demonstração.
 3. Em **Connect**, copie a `Project URL` e a `Publishable key` para o `.env`.
 4. Rode `npm run dev`.
 
@@ -274,7 +278,7 @@ de pagamento no backend.
 | `npm run build` | Build de produção (typecheck + Vite) |
 | `npm run preview` | Serve o build |
 | `npm run typecheck` | Checagem de tipos |
-| `npm run gen:seed` | Regera `supabase/migrations/0003_seed.sql` a partir do cardápio |
+| `npm run gen:seed` | Emite o SQL do catálogo a partir de `src/data/menu.ts` |
 
 ---
 
