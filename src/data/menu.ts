@@ -30,7 +30,7 @@ function produtos(categorySlug: CategorySlug, items: Item[]): Product[] {
   }));
 }
 
-const diasFixos = [2, 3, 4, 5];
+const diasFixos = [0, 2, 3, 4, 5, 6];
 const salada = 'Acompanha a salada do dia.';
 const acompanhamentos = 'Acompanha feijão carioca, arroz branco, farofa da casa, ovo frito e salada do dia.';
 

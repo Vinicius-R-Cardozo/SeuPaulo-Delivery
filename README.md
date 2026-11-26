@@ -45,7 +45,7 @@ O app do cliente/entregador e o painel usam o Supabase para catálogo,
 autenticação, endereços, pedidos e entregas.
 
 Os itens e preços iniciais seguem o [cardápio da casa](https://www.seupaulobuteco.com.br/cardapiofinal.pdf) e o [PDF de almoço](https://www.seupaulobuteco.com.br/almoco.pdf).
-O almoço programado segue o calendário da casa de terça a sexta. A programação variável de sábado e domingo é definida pela equipe no painel do delivery.
+O almoço tem opções fixas de terça a domingo. Os especiais de terça a sexta mudam automaticamente conforme o dia da semana no fuso de Betim. A equipe pode acrescentar opções de fim de semana pelo painel do delivery.
 
 ## 🚀 1. Como instalar
 

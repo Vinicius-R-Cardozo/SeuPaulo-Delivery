@@ -13,8 +13,8 @@ export function Home() {
 
   const firstName = profile?.fullName.split(' ')[0] ?? '';
   const popular = products.filter((p) => p.available && p.popular).slice(0, 4);
-  const lunch = sections.find(({ category }) => category.slug === 'pratos')?.items ?? [];
-  const lunchSpecials = lunch.filter((product) => product.availableWeekdays?.length === 1);
+  const lunch = [...(sections.find(({ category }) => category.slug === 'pratos')?.items ?? [])];
+  lunch.sort((a, b) => (a.availableWeekdays?.length ?? 7) - (b.availableWeekdays?.length ?? 7));
   const novidades = products.filter((p) => p.available && p.isNew).slice(0, 4);
 
   return (
@@ -53,7 +53,7 @@ export function Home() {
         </div>
       </div>}
 
-      {lunchSpecials.length > 0 && (
+      {lunch.length > 0 && (
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="display text-lg text-cream">Almoço de hoje</h2>
@@ -62,7 +62,7 @@ export function Home() {
             </Link>
           </div>
           <div className="space-y-3">
-            {lunchSpecials.map((product) => <ProductCard key={product.id} product={product} />)}
+            {lunch.map((product) => <ProductCard key={product.id} product={product} />)}
           </div>
         </section>
       )}
