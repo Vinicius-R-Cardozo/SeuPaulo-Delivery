@@ -62,6 +62,8 @@ export function CustomerRegister() {
 
   return (
     <AuthShell
+      showLegalLinks
+      legalRevisions={legal.revisions}
       badge="Cliente"
       title="Criar conta"
       subtitle="Crie sua conta para pedir o almoço."

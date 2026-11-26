@@ -3,6 +3,7 @@
 
     <color name="app_window_background">#121010</color>
     <color name="app_launch_background">#A42129</color>
+    <color name="app_launch_edge">#75151C</color>
 
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
@@ -27,8 +28,9 @@
         <item name="windowSplashScreenBackground">@color/app_launch_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/launch_toast</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
-        <item name="android:statusBarColor">@color/app_window_background</item>
-        <item name="android:navigationBarColor">@color/app_window_background</item>
+        <item name="android:statusBarColor">@color/app_launch_background</item>
+        <item name="android:navigationBarColor">@color/app_launch_background</item>
+        <item name="android:navigationBarDividerColor">@color/app_launch_background</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
     </style>

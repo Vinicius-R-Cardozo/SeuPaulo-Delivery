@@ -5,7 +5,10 @@ import rightGlass from '@/assets/launch/right-glass.png';
 import toastRays from '@/assets/launch/toast-rays.png';
 import './native-launch.css';
 
-const launchSplash = registerPlugin<{ ready: () => Promise<void> }>('LaunchSplash');
+const launchSplash = registerPlugin<{
+  ready: () => Promise<void>;
+  finish: () => Promise<void>;
+}>('LaunchSplash');
 type LaunchPhase = 'waiting' | 'playing' | 'leaving' | 'done';
 
 export function NativeLaunch({ enabled, children }: { enabled: boolean; children: ReactNode }) {
@@ -14,11 +17,18 @@ export function NativeLaunch({ enabled, children }: { enabled: boolean; children
     return Capacitor.isPluginAvailable('LaunchSplash') ? 'waiting' : 'playing';
   });
   const androidExit = useRef<Promise<void> | null>(null);
+  const isAndroid = Capacitor.getPlatform() === 'android';
   const visible = phase !== 'done';
 
   useLayoutEffect(() => {
     document.documentElement.classList.remove('native-launching');
   }, []);
+
+  useLayoutEffect(() => {
+    if (enabled && isAndroid && !visible && Capacitor.isPluginAvailable('LaunchSplash')) {
+      void launchSplash.finish().catch(() => {});
+    }
+  }, [enabled, isAndroid, visible]);
 
   useEffect(() => {
     if (phase !== 'waiting') return;
@@ -57,6 +67,7 @@ export function NativeLaunch({ enabled, children }: { enabled: boolean; children
         <div
           className="native-launch"
           data-phase={phase}
+          data-android={isAndroid || undefined}
           role="img"
           aria-label="Seu Paulo Buteco"
           onAnimationEnd={(event) => {

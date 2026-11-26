@@ -119,7 +119,7 @@ export function Checkout() {
   if (loadingAddr) return <FullScreenLoader />;
 
   return (
-    <div className="pb-40 pt-4">
+    <div className="pt-4">
       <div className="mb-4 flex items-center gap-3 px-4">
         <button onClick={() => navigate(-1)} className="text-cream" aria-label="Voltar">
           <ArrowLeft size={22} />

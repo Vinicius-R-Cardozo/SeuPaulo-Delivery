@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { FullScreenLoader } from '@/components/ui/Spinner';
-import { LegalAcceptanceFields, useLegalRequirements } from './LegalAcceptance';
+import { LegalAcceptanceField, useLegalRequirements } from './LegalAcceptance';
+import { LegalFooter } from './LegalDocuments';
 import { getSupabase } from '@/services/supabase/client';
 import type { LegalRevisions } from '@/services/types';
 
@@ -16,6 +17,8 @@ export function LegalAcceptanceGate({ children }: { children: ReactNode }) {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const pending = documents?.filter(document => !document.accepted);
+  const revisions: Partial<LegalRevisions> = {};
+  for (const document of documents ?? []) revisions[document.kind] = document.revision;
   const changes = pending?.flatMap(document =>
     document.changes?.map(change => ({ ...change, kind: document.kind })) ?? [],
   ) ?? [];
@@ -57,48 +60,56 @@ export function LegalAcceptanceGate({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-public-viewport">
-      <main className="mx-auto max-w-md space-y-5 px-5 py-8">
-        <h1 className="display text-3xl text-cream">{pending ? 'Revise os documentos vigentes' : 'Documentos legais indisponíveis'}</h1>
-        {pending ? (
-          <>
-            <p className="text-sm leading-relaxed text-cream-3">
-              {changes.length > 0
-                ? 'Veja as mudanças e confirme os documentos para continuar usando o app.'
-                : 'Confira os documentos abaixo e confirme a leitura para continuar usando o app.'}
-            </p>
-            {changes.length > 0 && (
-              <section aria-labelledby="legal-changes-heading" className="card space-y-3 p-4">
-                <h2 id="legal-changes-heading" className="text-base font-semibold text-cream">O que mudou</h2>
-                <ul className="divide-y divide-ink-3">
-                  {changes.map(change => (
-                    <li key={`${change.kind}:${change.revision}`} className="space-y-1.5 py-3 first:pt-0 last:pb-0">
-                      <p className="text-xs font-semibold text-cream-3">
-                        {change.kind === 'terms' ? 'Termos de Uso' : 'Política de Privacidade'} · Versão {change.revision}
-                      </p>
-                      <p className="whitespace-pre-line break-words text-sm leading-relaxed text-cream">{change.summary}</p>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            <LegalAcceptanceFields documents={pending} selections={selections} disabled={saving}
-              onChange={(kind, revision) => {
-                setFeedback(null);
-                setSelections(current => ({ ...current, [kind]: revision }));
-              }} />
-            <Button type="button" fullWidth disabled={!ready} loading={saving} onClick={() => void submit()}>
-              Confirmar e continuar
-            </Button>
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-cream-3">Não foi possível verificar os documentos do app. Verifique a conexão e tente novamente.</p>
-            <Button type="button" fullWidth onClick={refresh}>Tentar novamente</Button>
-          </>
-        )}
-        {feedback && <p role="alert" className="text-sm text-danger">{feedback}</p>}
-        <Button type="button" fullWidth variant="ghost" disabled={saving} onClick={() => void leave()}>Sair da conta</Button>
-      </main>
+      <div className="flex min-h-dvh flex-col">
+        <main className="mx-auto w-full max-w-md space-y-5 px-5 py-8">
+          <h1 className="display text-3xl text-cream">{pending ? 'Revise os documentos vigentes' : 'Documentos legais indisponíveis'}</h1>
+          {pending ? (
+            <>
+              <p className="text-sm leading-relaxed text-cream-3">
+                {changes.length > 0
+                  ? 'Veja as mudanças e confirme os documentos para continuar usando o app.'
+                  : 'Confira os documentos abaixo e confirme a leitura para continuar usando o app.'}
+              </p>
+              {changes.length > 0 && (
+                <section aria-labelledby="legal-changes-heading" className="card space-y-3 p-4">
+                  <h2 id="legal-changes-heading" className="text-base font-semibold text-cream">O que mudou</h2>
+                  <ul className="divide-y divide-ink-3">
+                    {changes.map(change => (
+                      <li key={`${change.kind}:${change.revision}`} className="space-y-1.5 py-3 first:pt-0 last:pb-0">
+                        <p className="text-xs font-semibold text-cream-3">
+                          {change.kind === 'terms' ? 'Termos de Uso' : 'Política de Privacidade'} · Versão {change.revision}
+                        </p>
+                        <p className="whitespace-pre-line break-words text-sm leading-relaxed text-cream">{change.summary}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              <LegalAcceptanceField kind={pending.length === 1 ? pending[0].kind : undefined}
+                checked={ready} disabled={saving}
+                onChange={checked => {
+                  setFeedback(null);
+                  const selection: Partial<LegalRevisions> = {};
+                  if (checked) {
+                    for (const document of pending) selection[document.kind] = document.revision;
+                  }
+                  setSelections(selection);
+                }} />
+              <Button type="button" fullWidth disabled={!ready} loading={saving} onClick={() => void submit()}>
+                Confirmar e continuar
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-cream-3">Não foi possível verificar os documentos do app. Verifique a conexão e tente novamente.</p>
+              <Button type="button" fullWidth onClick={refresh}>Tentar novamente</Button>
+            </>
+          )}
+          {feedback && <p role="alert" className="text-sm text-danger">{feedback}</p>}
+          <Button type="button" fullWidth variant="ghost" disabled={saving} onClick={() => void leave()}>Sair da conta</Button>
+        </main>
+        <LegalFooter revisions={revisions} />
+      </div>
     </div>
   );
 }

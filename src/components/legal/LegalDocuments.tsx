@@ -92,7 +92,7 @@ function LegalDocumentReader({ kind, revision, showDraft }: { kind: DocumentKind
   );
 }
 
-export function LegalLinks({ revisions }: { revisions?: Partial<LegalRevisions> } = {}) {
+export function LegalFooter({ revisions }: { revisions?: Partial<LegalRevisions> }) {
   const [params, setParams] = useSearchParams();
   const appearance = useLocation().state;
   const navigate = useNavigate();
@@ -116,25 +116,27 @@ export function LegalLinks({ revisions }: { revisions?: Partial<LegalRevisions> 
 
   return (
     <>
-      <nav className="flex flex-wrap items-center justify-center gap-x-5" aria-label="Documentos legais">
-        {(['terms', 'privacy'] as const).filter(documentKind => !revisions || revisions[documentKind] !== undefined).map(documentKind => {
-          const next = new URLSearchParams(params);
-          next.set('documento', documentKind);
-          const exactRevision = revisions?.[documentKind];
-          if (exactRevision !== undefined) next.set('revisao', String(exactRevision));
-          else next.delete('revisao');
-          return (
-            <Link key={documentKind} to={{ search: next.toString() }} state={{
-              ...appearance, openedLegalDocument: true,
-            }} className="inline-flex min-h-11 items-center text-sm text-brand-2 underline underline-offset-4">
-              {DOCUMENTS[documentKind].title}
-            </Link>
-          );
-        })}
-      </nav>
+      <footer className="app-legal-footer col-span-full mt-auto shrink-0 px-4 text-center">
+        <nav className="flex flex-wrap items-center justify-center gap-x-5" aria-label="Documentos legais">
+          {(['terms', 'privacy'] as const).map(documentKind => {
+            const next = new URLSearchParams(params);
+            next.set('documento', documentKind);
+            const exactRevision = revisions?.[documentKind];
+            if (exactRevision !== undefined) next.set('revisao', String(exactRevision));
+            else next.delete('revisao');
+            return (
+              <Link key={documentKind} to={{ search: next.toString() }} state={{
+                ...appearance, openedLegalDocument: true,
+              }} className="inline-flex min-h-11 items-center text-sm text-brand-2 underline underline-offset-4">
+                {DOCUMENTS[documentKind].title}
+              </Link>
+            );
+          })}
+        </nav>
+      </footer>
       {kind && (
         <Modal open title={DOCUMENTS[kind].title} onClose={close}>
-          <LegalDocumentReader key={`${kind}:${revision}`} kind={kind} revision={revision} showDraft={revision === undefined && !revisions} />
+          <LegalDocumentReader key={`${kind}:${revision}`} kind={kind} revision={revision} showDraft={revision === undefined} />
         </Modal>
       )}
     </>
@@ -150,7 +152,7 @@ export function PublicLegalDocument({ kind }: { kind: DocumentKind }) {
   }, [title]);
 
   return (
-    <main className="mx-auto max-w-2xl px-5 py-8">
+    <main className="mx-auto min-h-dvh w-full max-w-2xl px-5 py-8">
       <p className="text-sm text-cream-3">Seu Paulo Delivery</p>
       <h1 className="display mb-6 mt-2 text-3xl text-cream">{title}</h1>
       <LegalDocumentReader key={kind} kind={kind} />

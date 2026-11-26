@@ -56,7 +56,7 @@ export function Cart() {
   }
 
   return (
-    <div className="pb-40 pt-4">
+    <div className="pt-4">
       <Header onBack={() => navigate(-1)} />
 
       <div className="space-y-3 px-4">

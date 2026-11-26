@@ -27,6 +27,14 @@
   animation: launch-light 460ms ease-out both;
 }
 
+.native-launch[data-android] {
+  background: var(--color-brand-deep);
+}
+
+.native-launch[data-android]::before {
+  background: radial-gradient(ellipse 75% 50% at center, var(--color-brand) 8%, transparent 100%);
+}
+
 .native-launch__glasses,
 .native-launch__logo {
   grid-area: 1 / 1;

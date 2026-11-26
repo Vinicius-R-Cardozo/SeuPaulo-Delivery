@@ -284,6 +284,8 @@ export function DriverRegister() {
 
   return (
     <AuthShell
+      showLegalLinks={step === 0}
+      legalRevisions={legal.revisions}
       badge="Entregador"
       title="Cadastro de entregador"
       subtitle="Envie seus dados e os do veículo para análise."

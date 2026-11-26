@@ -1,6 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { LegalLinks } from '@/components/legal/LegalDocuments';
+import { LegalFooter } from '@/components/legal/LegalDocuments';
 import { Logo } from '@/components/ui/Logo';
 
 export function About() {
@@ -16,8 +16,8 @@ export function About() {
       <section className="card flex flex-col items-center gap-3 p-5 text-center">
         <Logo size="sm" withText={false} />
         <p className="font-semibold text-cream">Seu Paulo Delivery</p>
-        <LegalLinks />
       </section>
+      <LegalFooter />
     </div>
   );
 }

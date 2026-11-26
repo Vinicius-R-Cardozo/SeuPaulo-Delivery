@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { LegalLinks } from './LegalDocuments';
 import { getSupabase } from '@/services/supabase/client';
 import type { LegalDocumentKind, LegalRevisions } from '@/services/types';
 
@@ -55,55 +54,51 @@ export function useLegalRequirements() {
   return { documents, error, refresh: () => setRetry(value => value + 1) };
 }
 
-export function LegalAcceptanceFields({ documents, selections, onChange, disabled }: {
-  documents: Requirement[];
-  selections: Partial<LegalRevisions>;
-  onChange: (kind: LegalDocumentKind, revision?: number) => void;
+export function LegalAcceptanceField({
+  kind,
+  checked,
+  onChange,
+  disabled,
+}: {
+  kind?: LegalDocumentKind;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
   disabled?: boolean;
 }) {
-  const versions: Partial<LegalRevisions> = {};
-  for (const doc of documents) versions[doc.kind] = doc.revision;
+  const label = kind === 'terms' ? 'Aceito os Termos de Uso'
+    : kind === 'privacy' ? 'Li a Política de Privacidade'
+      : 'Aceito os Termos de Uso e li a Política de Privacidade';
 
   return (
-    <fieldset disabled={disabled} className="card space-y-2 px-4 pb-3 pt-1">
-      <legend className="px-1 text-sm font-semibold text-cream">Documentos legais</legend>
-      <LegalLinks revisions={versions} />
-      {(['terms', 'privacy'] as const).map(kind => {
-        const revision = versions[kind];
-        if (revision === undefined) return null;
-        return (
-          <label key={kind} className="flex min-h-11 cursor-pointer items-center gap-3 text-sm leading-snug text-cream">
-            <input type="checkbox" checked={selections[kind] === revision}
-              onChange={event => onChange(kind, event.target.checked ? revision : undefined)}
-              className="h-5 w-5 shrink-0 accent-brand" />
-            <span>
-              {kind === 'terms' ? 'Aceito os Termos de Uso' : 'Li a Política de Privacidade'}
-              <span className="ml-1 text-xs text-cream-3">(versão {revision})</span>
-            </span>
-          </label>
-        );
-      })}
-    </fieldset>
+    <label className="card flex min-h-12 cursor-pointer items-center gap-3 px-4 py-3 text-sm leading-snug text-cream has-disabled:cursor-default">
+      <input type="checkbox" checked={checked} disabled={disabled}
+        onChange={event => onChange(event.target.checked)}
+        className="h-5 w-5 shrink-0 accent-brand" />
+      <span>{label}</span>
+    </label>
   );
 }
 
 export function useSignupLegalAcceptance() {
   const { documents, error, refresh } = useLegalRequirements();
-  const [selections, setSelections] = useState<Partial<LegalRevisions>>({});
+  const [selected, setSelected] = useState<LegalRevisions | null>(null);
   const terms = documents?.find(doc => doc.kind === 'terms')?.revision;
   const privacy = documents?.find(doc => doc.kind === 'privacy')?.revision;
-  const ready = !error && terms !== undefined && privacy !== undefined;
-  const acceptance = ready && terms === selections.terms && privacy === selections.privacy ? { terms, privacy } : null;
+  const revisions = !error && terms !== undefined && privacy !== undefined ? { terms, privacy } : undefined;
+  const acceptance = revisions && selected?.terms === terms && selected?.privacy === privacy ? revisions : null;
+
   return {
     acceptance,
+    revisions,
     refresh,
     fields: {
-      documents: ready ? documents : null,
-      error,
-      loading: !documents && !error,
+      ready: Boolean(revisions),
+      checked: acceptance !== null,
+      message: error ? 'Não foi possível carregar os documentos do cadastro.'
+        : documents && !revisions ? 'O cadastro estará disponível quando os documentos oficiais forem publicados.'
+        : null,
       refresh,
-      selections,
-      onChange: (kind: LegalDocumentKind, revision?: number) => setSelections(current => ({ ...current, [kind]: revision })),
+      onChange: (checked: boolean) => setSelected(checked ? revisions ?? null : null),
     },
   };
 }
@@ -112,15 +107,15 @@ export function SignupLegalFields({ fields, disabled }: {
   fields: ReturnType<typeof useSignupLegalAcceptance>['fields'];
   disabled?: boolean;
 }) {
-  if (fields.documents) return <LegalAcceptanceFields documents={fields.documents} selections={fields.selections}
-    onChange={fields.onChange} disabled={disabled} />;
   return (
-    <div className="space-y-2 text-sm text-cream-3" role="status">
-      <p>{fields.loading ? 'Buscando os documentos do cadastro…' : fields.error
-        ? 'Não foi possível carregar os documentos do cadastro.'
-        : 'O cadastro estará disponível quando os documentos oficiais forem publicados.'}</p>
-      {!fields.loading && <button type="button" className="text-brand-2 underline" onClick={fields.refresh}>Verificar novamente</button>}
-      <LegalLinks />
+    <div className="space-y-2">
+      <LegalAcceptanceField checked={fields.checked} onChange={fields.onChange} disabled={disabled || !fields.ready} />
+      {fields.message && (
+        <div className="space-y-2 text-sm text-cream-3" role="status">
+          <p>{fields.message}</p>
+          <button type="button" className="text-brand-2 underline" onClick={fields.refresh}>Verificar novamente</button>
+        </div>
+      )}
     </div>
   );
 }

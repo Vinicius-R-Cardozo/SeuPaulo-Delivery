@@ -156,7 +156,7 @@ export function ActiveDelivery() {
   const phaseIndex = order5.indexOf(stage);
 
   return (
-    <div className="pb-40">
+    <div>
       <div className="flex items-center gap-3 px-4 py-3">
         <button onClick={() => navigate('/entregador')} className="text-cream" aria-label="Voltar">
           <ArrowLeft size={22} />

@@ -236,7 +236,7 @@
   .app-welcome {
     display: grid;
     min-height: 100dvh;
-    grid-template-rows: minmax(13rem, 1fr) auto;
+    grid-template-rows: minmax(13rem, 1fr) auto auto;
   }
 
   .app-welcome-photo {
@@ -337,12 +337,36 @@
   }
 
   .app-content {
+    --app-action-space: 0px;
+    --app-action-safe-inset: 0px;
     grid-area: 1 / 1;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior-y: contain;
-    padding-bottom: calc(var(--tabs-space) + var(--cart-space) + 0.5rem);
-    scroll-padding-bottom: calc(var(--tabs-space) + var(--cart-space));
+    padding-bottom: calc(var(--tabs-space) + var(--cart-space) + var(--app-action-space) + 0.5rem);
+    scroll-padding-bottom: calc(var(--tabs-space) + var(--cart-space) + var(--app-action-space));
+  }
+
+  .app-content:has(.app-action-footer) {
+    --app-action-space: calc(10rem + var(--app-action-safe-inset));
+  }
+
+  .app-content:has(.app-action-footer-compact) {
+    --app-action-space: calc(8rem + var(--app-action-safe-inset));
+  }
+
+  .native-app .app-content {
+    --app-action-safe-inset: var(--app-safe-bottom);
+  }
+
+  .app-legal-footer {
+    border-top: 1px solid var(--color-ink-3);
+  }
+
+  .app-public-viewport .app-legal-footer {
+    padding-bottom: var(--app-safe-bottom);
   }
 
   #root:has(.app-modal) :is(.app-content, .app-public-viewport) {
@@ -352,6 +376,10 @@
   .native-app[data-app-keyboard] .app-shell {
     --tabs-space: 0px;
     --cart-space: 0px;
+  }
+
+  .native-app[data-app-keyboard] .app-content {
+    --app-action-space: 0px;
   }
 
   .native-app[data-app-keyboard] :is(.app-tab-bar, .app-cart-fab, .app-action-footer) {
@@ -434,7 +462,7 @@
   @media (orientation: landscape) and (min-width: 42rem) {
     .app-welcome {
       grid-template-columns: 1fr 1fr;
-      grid-template-rows: 1fr;
+      grid-template-rows: 1fr auto;
     }
 
     .app-welcome-photo::after {
@@ -465,15 +493,6 @@
   }
   .safe-bottom {
     padding-bottom: var(--app-safe-bottom);
-  }
-  .native-app .pb-40 {
-    padding-bottom: calc(10rem + var(--app-safe-bottom));
-  }
-  .native-app .pb-32 {
-    padding-bottom: calc(8rem + var(--app-safe-bottom));
-  }
-  .native-app[data-app-keyboard] .app-content :is(.pb-32, .pb-40) {
-    padding-bottom: 1rem;
   }
   .animate-in {
     animation: fade-in-up 0.4s var(--ease-out-soft) both;

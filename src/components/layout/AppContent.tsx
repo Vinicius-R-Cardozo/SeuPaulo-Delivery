@@ -8,11 +8,15 @@ interface Page {
 }
 
 export function AppContent({ tabIndex }: { tabIndex: number }) {
-  const { key } = useLocation();
+  const { pathname, search } = useLocation();
+  const params = new URLSearchParams(search);
+  params.delete('documento');
+  params.delete('revisao');
+  const pageSearch = params.toString();
   const outlet = useOutlet();
   const [current, setCurrent] = useState<Page>({ index: tabIndex, outlet });
   const [departing, setDeparting] = useState<Page | null>(null);
-  const scrollArea = useScreenEntry<HTMLElement>(departing ? 'none' : 'fade');
+  const scrollArea = useScreenEntry<HTMLDivElement>(departing ? 'none' : 'fade');
 
   if (current.index !== tabIndex) {
     const slide = current.index >= 0 && tabIndex >= 0 &&
@@ -23,7 +27,7 @@ export function AppContent({ tabIndex }: { tabIndex: number }) {
 
   useLayoutEffect(() => {
     scrollArea.current?.scrollTo({ top: 0, behavior: 'instant' });
-  }, [key]);
+  }, [pathname, pageSearch]);
 
   return (
     <div className="app-page-viewport" data-direction={departing && (tabIndex > departing.index ? 'forward' : 'backward')}>
@@ -32,7 +36,7 @@ export function AppContent({ tabIndex }: { tabIndex: number }) {
           {departing.outlet}
         </main>
       )}
-      <main
+      <div
         key={tabIndex}
         ref={scrollArea}
         className={departing ? 'app-content app-page-enter' : 'app-content'}
@@ -40,8 +44,8 @@ export function AppContent({ tabIndex }: { tabIndex: number }) {
           if (event.target === event.currentTarget) setDeparting(null);
         }}
       >
-        {outlet}
-      </main>
+        <main className="grow">{outlet}</main>
+      </div>
     </div>
   );
 }

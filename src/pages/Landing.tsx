@@ -104,7 +104,7 @@ export function Landing() {
         </div>
       </div>
 
-      <footer className="border-t border-ink-3 py-8 text-center text-xs text-cream-3">
+      <footer className="border-t border-ink-3 px-4 py-4 text-center text-xs text-cream-3">
         <p>
           {RESTAURANT.name} · {RESTAURANT.address}, {RESTAURANT.neighborhood} —{' '}
           {RESTAURANT.city}/{RESTAURANT.state}
@@ -117,7 +117,7 @@ export function Landing() {
 
 function AppWelcome() {
   return (
-    <main className="app-welcome bg-ink">
+    <div className="app-welcome bg-ink">
       <div className="app-welcome-photo">
         <img
           src="/hero.jpg"
@@ -130,7 +130,7 @@ function AppWelcome() {
         </div>
       </div>
 
-      <div className="app-welcome-content mx-auto w-full max-w-md px-6 pb-6 pt-1">
+      <main className="app-welcome-content mx-auto w-full max-w-md px-6 pb-2 pt-1">
         <h1 className="text-[clamp(2.125rem,9.75vw,2.75rem)] leading-[1.06] font-bold tracking-tight text-cream">
           Do boteco<br />pra sua mesa.
         </h1>
@@ -155,8 +155,8 @@ function AppWelcome() {
           Área do entregador
           <ChevronRight size={18} className="ml-auto text-cream-3" aria-hidden="true" />
         </Link>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
 

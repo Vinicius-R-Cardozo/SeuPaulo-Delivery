@@ -251,6 +251,9 @@ class SupabaseRepository implements DataRepository {
     const profile = await this.profileFromUser(data.user.id);
     if (role && !hasRole(profile, role)) {
       await this.sb.auth.signOut();
+      if (profile.role === 'admin') {
+        throw new Error('Este e-mail é do painel administrativo. Use outro e-mail para criar uma conta no app.');
+      }
       if (role === 'driver' && profile.role === 'customer')
         throw new Error('Complete o cadastro de entregador usando o e-mail e a senha da sua conta.');
       if (role === 'customer' && profile.role === 'driver')
@@ -369,14 +372,21 @@ class SupabaseRepository implements DataRepository {
   }
 
   async startCustomerSignup(input: Parameters<DataRepository['startCustomerSignup']>[0]): Promise<{ expiresAt: string }> {
-    return this.callSignupFn<{ expiresAt: string }>({
-      action: 'request',
-      email: input.email,
-      password: input.password,
-      fullName: input.fullName,
-      phone: input.phone,
-      legalAcceptance: input.legalAcceptance,
-    });
+    try {
+      return await this.callSignupFn<{ expiresAt: string }>({
+        action: 'request',
+        email: input.email,
+        password: input.password,
+        fullName: input.fullName,
+        phone: input.phone,
+        legalAcceptance: input.legalAcceptance,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Já existe uma conta com este e-mail.') {
+        throw new Error('Este e-mail já está em uso. Entre com a conta existente ou use outro e-mail para se cadastrar.');
+      }
+      throw error;
+    }
   }
 
   async verifyCustomerEmail(email: string, code: string): Promise<void> {
