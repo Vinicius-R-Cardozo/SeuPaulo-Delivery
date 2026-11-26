@@ -18,7 +18,7 @@ const VARIANTS: Record<Variant, string> = {
   primary: 'btn-primary',
   amber: 'btn-amber',
   ghost: 'btn-ghost',
-  danger: 'bg-danger text-cream hover:brightness-110',
+  danger: 'btn-danger',
 };
 
 const SIZES: Record<Size, string> = {

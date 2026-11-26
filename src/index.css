@@ -19,9 +19,9 @@
   --color-cream-2: #ebe2d2;
   --color-cream-3: #d8ccb6;
 
-  /* Vermelho da marca */
+  /* Vermelho da marca compartilhado por preenchimentos, textos e ícones. */
   --color-brand: #a42129;
-  --color-brand-2: #c22b34;
+  --color-brand-2: var(--color-brand);
   --color-brand-deep: #75151c;
 
   /* Âmbar do chope — destaque, badges, preços */
@@ -31,7 +31,7 @@
   /* Semânticas de status */
   --color-success: #3f9d5a;
   --color-warning: #d9a441;
-  --color-danger: #c22b34;
+  --color-danger: var(--color-brand-2);
   --color-info: #4a7fb0;
 
   --font-display: 'Anton', 'Arial Narrow', system-ui, sans-serif;
@@ -158,12 +158,12 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
-  .btn-primary {
+  .btn-primary, .btn-danger {
     background: var(--color-brand);
     color: var(--color-cream);
   }
-  .btn-primary:not(:disabled):hover {
-    background: var(--color-brand-2);
+  .btn-primary:not(:disabled):hover, .btn-danger:not(:disabled):hover {
+    background: color-mix(in srgb, var(--color-brand) 90%, var(--color-cream));
     transform: translateY(-1px);
   }
   .btn-amber {
@@ -283,7 +283,7 @@
     --tab-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
     --tabs-space: 0px;
     --cart-space: 0px;
-    --tab-accent: color-mix(in srgb, var(--color-brand-2) 75%, var(--color-cream));
+    --tab-accent: var(--color-brand-2);
     position: fixed;
     inset: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
     display: flex;
@@ -603,8 +603,8 @@
 }
 
 .map-marker--restaurant {
-  --marker-bg: #50282b;
-  --marker-color: #ffbeb6;
+  --marker-bg: color-mix(in srgb, var(--color-brand) 24%, var(--color-ink-2));
+  --marker-color: var(--color-brand-2);
 }
 
 .map-marker--destination {
@@ -665,6 +665,6 @@
   height: 16px;
 }
 
-.map-legend__restaurant { color: #ffbeb6; }
+.map-legend__restaurant { color: var(--color-brand-2); }
 .map-legend__destination { color: #e7eae5; }
 .map-legend__courier { color: #e5bd70; }
