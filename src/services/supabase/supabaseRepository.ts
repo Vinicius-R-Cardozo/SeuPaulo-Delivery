@@ -29,6 +29,7 @@ import type {
   SignUpInput,
   Unsubscribe,
 } from '@/services/types';
+import { CustomerVerificationRequired } from '@/services/customerVerification';
 import type { CapturedMedia } from '@/components/onboarding/capture';
 import { getSupabase, isSupabaseConfigured } from './client';
 import { estimateEtaMinutes } from '@/utils/geo';
@@ -242,6 +243,12 @@ class SupabaseRepository implements DataRepository {
 
   async signIn(email: string, password: string, role?: Profile['role']): Promise<AuthSession> {
     const { data, error } = await this.sb.auth.signInWithPassword({ email, password });
+    if (role === 'customer' && error?.code === 'email_not_confirmed') {
+      const { expiresAt } = await this.callSignupFn<{ expiresAt: string }>({
+        action: 'resume', email, password,
+      });
+      throw new CustomerVerificationRequired(email, expiresAt);
+    }
     if (error) throw new Error('E-mail ou senha incorretos.');
     // Cliente com e-mail ainda não verificado não entra como conta ativa.
     if (!data.user.email_confirmed_at) {

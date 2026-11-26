@@ -8,6 +8,7 @@ import { PasswordField } from '@/components/ui/PasswordField';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { repository } from '@/services';
+import { saveCustomerVerification } from '@/services/customerVerification';
 import { useToast } from '@/providers/ToastProvider';
 import { formatPhone } from '@/utils/format';
 import {
@@ -44,12 +45,7 @@ export function CustomerRegister() {
     try {
       // Não finaliza a conta ainda: gera e envia o código de verificação.
       const { expiresAt } = await repository.startCustomerSignup({ ...form, role: 'customer', legalAcceptance: legal.acceptance });
-      try {
-        sessionStorage.setItem('spd_verify_email', form.email.trim());
-        sessionStorage.setItem('spd_verify_exp', String(new Date(expiresAt).getTime()));
-      } catch {
-        /* ignore */
-      }
+      saveCustomerVerification(form.email, expiresAt);
       toast.success('Enviamos um código de 6 dígitos para o seu e-mail.');
       navigate('/verificar-email');
     } catch (err) {

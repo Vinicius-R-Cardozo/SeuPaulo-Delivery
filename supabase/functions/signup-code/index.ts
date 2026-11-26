@@ -264,17 +264,41 @@ Deno.serve(async (req) => {
       return json({ ok: true, expiresAt });
     }
 
-    /* ------------------------------ RESEND ------------------------------- */
-    if (action === 'resend') {
-      const { data: row } = await admin
+    /* --------------------------- RESUME / RESEND -------------------------- */
+    if (action === 'resume' || action === 'resend') {
+      let pendingUserId: string | undefined;
+      if (action === 'resume') {
+        const password = String(body.password ?? '');
+        if (!password) return json({ error: 'E-mail ou senha incorretos.' });
+
+        // Auth returns email_not_confirmed after checking the password.
+        const { data, error } = await publicAuth.auth.signInWithPassword({ email, password });
+        if (error?.code !== 'email_not_confirmed') {
+          if (data.session) await publicAuth.auth.signOut({ scope: 'local' });
+          if (error?.code === 'invalid_credentials') return json({ error: 'E-mail ou senha incorretos.' });
+          return json({ error: 'Não foi possível retomar a confirmação. Tente entrar novamente.' });
+        }
+
+        const { data: status, error: lookupError } = await admin.rpc('auth_user_status', { p_email: email });
+        if (lookupError) return json({ error: 'Serviço de cadastro indisponível.' }, 503);
+        const existing = Array.isArray(status) ? status[0] : status;
+        if (!existing?.id || existing.confirmed !== false) {
+          return json({ error: 'Não foi possível retomar a confirmação. Tente entrar novamente.' });
+        }
+        pendingUserId = existing.id;
+      }
+
+      const { data: row, error: pendingError } = await admin
         .from('signup_verifications')
-        .select('attempt_id, user_id, created_at, consumed')
+        .select('attempt_id, user_id, code_hash, created_at, expires_at, consumed, attempts')
         .eq('email', email)
         .maybeSingle();
-      if (!row?.user_id || row.consumed) {
+      if (pendingError) return json({ error: 'Serviço de cadastro indisponível.' }, 503);
+      if (!row?.user_id || row.consumed || (pendingUserId && row.user_id !== pendingUserId)) {
         return json({ error: 'Cadastro pendente não encontrado.' });
       }
       if (Date.now() - new Date(row.created_at).getTime() < RESEND_COOLDOWN_MS) {
+        if (action === 'resume') return json({ ok: true, expiresAt: row.expires_at });
         return json({ error: 'Aguarde um minuto antes de pedir outro código.' });
       }
 
@@ -292,6 +316,7 @@ Deno.serve(async (req) => {
         })
         .eq('email', email)
         .eq('attempt_id', row.attempt_id)
+        .eq('attempts', row.attempts)
         .eq('consumed', false)
         .select('attempt_id')
         .maybeSingle();
@@ -299,7 +324,21 @@ Deno.serve(async (req) => {
         return json({ error: 'Não foi possível gerar outro código. Tente novamente.' });
       }
 
-      await sendEmail(email, code);
+      try {
+        await sendEmail(email, code);
+      } catch (error) {
+        const { error: restoreError } = await admin.from('signup_verifications')
+          .update({
+            attempt_id: row.attempt_id,
+            code_hash: row.code_hash,
+            created_at: row.created_at,
+            expires_at: row.expires_at,
+            attempts: row.attempts,
+          })
+          .eq('email', email).eq('attempt_id', replacement.attempt_id).eq('consumed', false);
+        if (restoreError) console.error('Erro ao restaurar o código anterior', restoreError.code);
+        throw error;
+      }
       return json({ ok: true, expiresAt });
     }
 

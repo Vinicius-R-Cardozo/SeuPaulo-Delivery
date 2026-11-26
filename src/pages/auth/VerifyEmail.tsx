@@ -1,46 +1,21 @@
-import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MailCheck, RotateCcw, ShieldCheck } from 'lucide-react';
 import { AuthShell } from '@/components/layout/AuthShell';
 import { Button } from '@/components/ui/Button';
 import { repository } from '@/services';
+import { clearCustomerVerification, readCustomerVerification, saveCustomerVerification } from '@/services/customerVerification';
 import { useToast } from '@/providers/ToastProvider';
 import { cn } from '@/utils/cn';
 
-const EMAIL_KEY = 'spd_verify_email';
-const EXP_KEY = 'spd_verify_exp';
 const RESEND_COOLDOWN_S = 60;
 const TTL_S = 5 * 60;
-
-function read(key: string): string | null {
-  try {
-    return sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-function write(key: string, value: string) {
-  try {
-    sessionStorage.setItem(key, value);
-  } catch {
-    /* ignore */
-  }
-}
-function clearPending() {
-  try {
-    sessionStorage.removeItem(EMAIL_KEY);
-    sessionStorage.removeItem(EXP_KEY);
-  } catch {
-    /* ignore */
-  }
-}
 
 export function VerifyEmail() {
   const navigate = useNavigate();
   const toast = useToast();
 
-  const email = useMemo(() => read(EMAIL_KEY) ?? '', []);
-  const [expiresAt, setExpiresAt] = useState<number>(() => Number(read(EXP_KEY) ?? 0));
+  const [{ email, expiresAt }, setVerification] = useState(readCustomerVerification);
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [now, setNow] = useState<number>(Date.now());
   const [loading, setLoading] = useState(false);
@@ -48,7 +23,6 @@ export function VerifyEmail() {
   const [error, setError] = useState<string | null>(null);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Sem cadastro pendente (abriu a tela direto) → volta ao cadastro.
   useEffect(() => {
     if (!email) navigate('/cadastro', { replace: true });
   }, [email, navigate]);
@@ -115,7 +89,7 @@ export function VerifyEmail() {
     setError(null);
     try {
       await repository.verifyCustomerEmail(email, code);
-      clearPending();
+      clearCustomerVerification();
       toast.success('E-mail verificado com sucesso! Sua conta foi criada. 🎉');
       navigate('/login', { replace: true, state: { email } });
     } catch (err) {
@@ -132,9 +106,8 @@ export function VerifyEmail() {
     setError(null);
     try {
       const { expiresAt: exp } = await repository.resendCustomerCode(email);
-      const ms = new Date(exp).getTime();
-      setExpiresAt(ms);
-      write(EXP_KEY, String(ms));
+      saveCustomerVerification(email, exp);
+      setVerification({ email, expiresAt: Date.parse(exp) });
       setDigits(['', '', '', '', '', '']);
       toast.success('Novo código enviado para o seu e-mail.');
       requestAnimationFrame(() => inputs.current[0]?.focus());

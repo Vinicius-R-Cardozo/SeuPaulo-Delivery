@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Mail } from 'lucide-react';
 import { AuthShell } from '@/components/layout/AuthShell';
 import { Input } from '@/components/ui/Input';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { CustomerVerificationRequired, saveCustomerVerification } from '@/services/customerVerification';
 import { useToast } from '@/providers/ToastProvider';
 import { validateEmail } from '@/utils/validation';
 
@@ -13,8 +14,9 @@ export function CustomerLogin() {
   const { signIn } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const { state } = useLocation();
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => typeof state?.email === 'string' ? state.email : '');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string | null; password?: string | null }>({});
   const [loading, setLoading] = useState(false);
@@ -30,7 +32,12 @@ export function CustomerLogin() {
       await signIn(email, password, 'customer');
       navigate('/app', { replace: true });
     } catch (err) {
-      toast.error((err as Error).message);
+      if (err instanceof CustomerVerificationRequired) {
+        saveCustomerVerification(err.email, err.expiresAt);
+        navigate('/verificar-email', { replace: true });
+      } else {
+        toast.error((err as Error).message);
+      }
     } finally {
       setLoading(false);
     }
