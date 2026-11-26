@@ -3,11 +3,15 @@ import { Capacitor } from '@capacitor/core';
 import { ShoppingBag, Bike, ArrowRight, ChevronRight, MapPin, Clock } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/Button';
+import { FullScreenLoader } from '@/components/ui/Spinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { RESTAURANT } from '@/data/restaurant';
 
 export function Landing() {
   const { profile, loading } = useAuth();
+  const isNative = Capacitor.isNativePlatform();
+
+  if (isNative && loading) return <FullScreenLoader />;
 
   // Se já estiver logado, vai direto ao ambiente correspondente.
   if (!loading && profile) {
@@ -15,7 +19,7 @@ export function Landing() {
     return <Navigate to={home} replace />;
   }
 
-  if (Capacitor.isNativePlatform()) return <AppWelcome />;
+  if (isNative) return <AppWelcome />;
 
   return (
     <div className="min-h-screen bg-ink">
