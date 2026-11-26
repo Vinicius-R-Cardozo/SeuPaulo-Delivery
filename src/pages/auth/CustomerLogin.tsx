@@ -41,7 +41,7 @@ export function CustomerLogin() {
       showLegalLinks
       badge="Cliente"
       title="Bem-vindo de volta"
-      subtitle="Entre para pedir seu petisco favorito."
+      subtitle="Entre para pedir seu almoço."
       footer={
         <>
           Ainda não tem conta?{' '}

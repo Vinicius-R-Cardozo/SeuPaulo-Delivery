@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
 import { repository } from '@/services';
 import { useToast } from '@/providers/ToastProvider';
-import type { Category, CategorySlug, Product } from '@/types';
+import type { Category, Product } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal, ConfirmDialog } from '@/components/ui/Modal';
@@ -41,7 +41,7 @@ export function MenuManager() {
 
   const load = () => {
     Promise.all([repository.getCategories(), repository.getProducts()]).then(([c, p]) => {
-      setCategories(c.filter((x) => x.slug !== 'mais-pedidos'));
+      setCategories(c.filter(({ slug }) => slug === 'pratos' || slug === 'porcoes'));
       setProducts(p);
       setLoading(false);
     });
@@ -135,7 +135,6 @@ export function MenuManager() {
       {(creating || editing) && (
         <ProductEditor
           initial={editing}
-          categories={categories}
           onClose={() => {
             setCreating(false);
             setEditing(null);
@@ -191,12 +190,10 @@ function IconBtn({
 
 function ProductEditor({
   initial,
-  categories,
   onClose,
   onSaved,
 }: {
   initial: Product | null;
-  categories: Category[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -205,7 +202,6 @@ function ProductEditor({
     name: initial?.name ?? '',
     description: initial?.description ?? '',
     price: initial ? String(initial.price) : '',
-    categorySlug: initial?.categorySlug ?? categories[0]?.slug ?? 'petiscos',
     image: initial?.image ?? IMAGE_PRESETS[0],
     serves: initial?.serves ?? '',
     popular: initial?.popular ?? false,
@@ -225,7 +221,7 @@ function ProductEditor({
     try {
       const product: Product = {
         id: initial?.id ?? uid('p'),
-        categorySlug: form.categorySlug as CategorySlug,
+        categorySlug: initial?.categorySlug ?? 'pratos',
         name: form.name.trim(),
         description: form.description.trim(),
         price,
@@ -276,27 +272,13 @@ function ProductEditor({
             value={form.price}
             onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
           />
-          <div>
-            <label className="label">Categoria</label>
-            <select
-              className="input"
-              value={form.categorySlug}
-              onChange={(e) => setForm((f) => ({ ...f, categorySlug: e.target.value as CategorySlug }))}
-            >
-              {categories.map((c) => (
-                <option key={c.id} value={c.slug}>
-                  {c.emoji} {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Input
+            label="Serve (opcional)"
+            placeholder="Ex.: Serve 2"
+            value={form.serves}
+            onChange={(e) => setForm((f) => ({ ...f, serves: e.target.value }))}
+          />
         </div>
-        <Input
-          label="Porção serve (opcional)"
-          placeholder="Ex.: Serve 2"
-          value={form.serves}
-          onChange={(e) => setForm((f) => ({ ...f, serves: e.target.value }))}
-        />
 
         {/* Imagem */}
         <div>

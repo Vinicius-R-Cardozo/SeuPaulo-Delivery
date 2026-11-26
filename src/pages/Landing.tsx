@@ -52,8 +52,7 @@ export function Landing() {
               <span className="text-brand-2">palma da mão</span>
             </h1>
             <p className="mx-auto mt-6 max-w-lg text-pretty text-base text-cream/70 sm:text-lg">
-              Petisco crocante, cerveja estupidamente gelada e a comida de sempre — agora com
-              entrega rápida e acompanhamento ao vivo até a sua porta.
+              Escolha o almoço do Seu Paulo e acompanhe a entrega até a sua porta.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link to="/cadastro">

@@ -64,7 +64,7 @@ export function CustomerRegister() {
     <AuthShell
       badge="Cliente"
       title="Criar conta"
-      subtitle="É rapidinho. Depois é só escolher os petiscos."
+      subtitle="Crie sua conta para pedir o almoço."
       image="/bar-mesa.jpg"
       footer={
         <>
