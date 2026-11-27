@@ -44,7 +44,7 @@ cardápio, carrinho, cupons, pagamento, acompanhamento de pedido e **acompanhame
 O app do cliente/entregador e o painel usam o Supabase para catálogo,
 autenticação, endereços, pedidos e entregas.
 
-O Delivery vende os pratos do [cardápio de almoço](https://www.seupaulobuteco.com.br/almoco.pdf) e as fritas como acompanhamento.
+O Delivery vende os pratos do [cardápio de almoço](https://www.seupaulobuteco.com.br/almoco.pdf), fritas como acompanhamento e os refrigerantes e águas habilitados no cardápio.
 O almoço tem opções fixas de terça a domingo. Os especiais de terça a sexta mudam automaticamente conforme o dia da semana no fuso de Betim. A equipe pode acrescentar opções de fim de semana pelo painel do delivery.
 
 ## 🚀 1. Como instalar
