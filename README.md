@@ -213,6 +213,12 @@ Os mapas usam **Leaflet + OpenStreetMap**, que **não exigem chave de API** — 
 box. A geocodificação (busca e reverse) usa o **Nominatim** (OSM).
 
 - O ponto do restaurante fica em `src/data/restaurant.ts` (coordenadas reais da casa).
+- O build de produção lê `VITE_ADDRESS_AUTOCOMPLETE_URL` de `.env.production` para sugestões
+  ao digitar. O servidor público do [Photon](https://github.com/komoot/photon#demo-server)
+  limita o volume e não tem disponibilidade garantida. A variável pode ser sobrescrita no
+  ambiente de build com o endpoint `/api` de outra instância. A busca manual continua disponível.
+- Para incorporar uma troca do endpoint no Android ou iOS, gere o build web, sincronize
+  o Capacitor e gere uma nova versão do aplicativo.
 - Para produção com volume, troque o provedor de tiles/geocoding por um pago
   (Mapbox, Google, LocationIQ) respeitando os limites de uso — a troca é isolada em
   `src/services/geocoding.ts` e `src/components/maps/`.

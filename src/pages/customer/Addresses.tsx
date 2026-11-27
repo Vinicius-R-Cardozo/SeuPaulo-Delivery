@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -14,7 +14,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/providers/ToastProvider';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { repository } from '@/services';
-import { searchAddress, reverseGeocode, type GeocodeResult } from '@/services/geocoding';
+import {
+  isAddressAutocompleteEnabled, searchAddress, suggestAddresses, reverseGeocode, type GeocodeResult,
+} from '@/services/geocoding';
 import type { Address, AddressLabel, LatLng } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -193,7 +195,7 @@ function AddressEditor({
   onSaved: () => void;
 }) {
   const toast = useToast();
-  const geo = useGeolocation();
+  const { position: location, loading: locating, permissionDenied, request: requestLocation } = useGeolocation();
 
   const [point, setPoint] = useState<LatLng>(
     initial ? { lat: initial.lat, lng: initial.lng } : RESTAURANT.location,
@@ -210,11 +212,53 @@ function AddressEditor({
     zip: initial?.zip ?? '',
   });
   const [query, setQuery] = useState('');
+  const [suggestionQuery, setSuggestionQuery] = useState('');
+  const [suggestionStatus, setSuggestionStatus] = useState<'loading' | 'empty' | 'error' | null>(null);
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [locatingAddress, setLocatingAddress] = useState(false);
   const [saving, setSaving] = useState(false);
+  const triedSearchLocation = useRef(false);
+
+  useEffect(() => {
+    if (!isAddressAutocompleteEnabled || suggestionQuery.length < 3) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setSuggestionStatus('loading');
+      try {
+        const suggestions = await suggestAddresses(suggestionQuery, controller.signal);
+        if (controller.signal.aborted) return;
+        setResults(suggestions);
+        setSuggestionStatus(suggestions.length > 0 ? null : 'empty');
+      } catch {
+        if (!controller.signal.aborted) setSuggestionStatus('error');
+      }
+    }, 500);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [suggestionQuery]);
+
+  const hasResults = results.length > 0;
+  useEffect(() => {
+    if (!hasResults || location || locating || permissionDenied || triedSearchLocation.current) return;
+    triedSearchLocation.current = true;
+    void requestLocation({ timeout: 30000 }).catch(() => {});
+  }, [hasResults, location, locating, permissionDenied, requestLocation]);
+
+  const rankedResults = location
+    ? results.map((result) => ({ result, distanceKm: haversineKm(location, result) }))
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+    : results.map((result) => ({ result, distanceKm: null }));
+  const distanceStatus = location ? 'Distâncias em linha reta' : 'Obtendo sua localização…';
 
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const resetSuggestions = () => {
+    setSuggestionQuery('');
+    setSuggestionStatus(null);
+  };
 
   const applyResult = (r: GeocodeResult) => {
     setPoint({ lat: r.lat, lng: r.lng });
@@ -227,13 +271,16 @@ function AddressEditor({
       state: r.state ?? f.state,
       zip: r.zip ?? f.zip,
     }));
+    resetSuggestions();
     setResults([]);
     setQuery(r.street ? `${r.street}${r.number ? `, ${r.number}` : ''}` : r.displayName);
   };
 
   const runSearch = async () => {
-    if (query.trim().length < 3) return;
+    if (searching || locatingAddress || query.trim().length < 3) return;
+    resetSuggestions();
     setSearching(true);
+    setResults([]);
     try {
       setResults(await searchAddress(query));
     } catch {
@@ -244,14 +291,18 @@ function AddressEditor({
   };
 
   const useMyLocation = async () => {
+    resetSuggestions();
+    setLocatingAddress(true);
     try {
-      const pos = await geo.request();
+      const pos = await requestLocation();
       setPoint(pos);
       const r = await reverseGeocode(pos);
       applyResult(r);
       toast.success('Localização detectada!');
     } catch (err) {
       toast.error((err as Error).message);
+    } finally {
+      setLocatingAddress(false);
     }
   };
 
@@ -323,42 +374,86 @@ function AddressEditor({
       <div className="space-y-4">
         {/* Busca + localização */}
         <div>
-          <div className="flex gap-2">
+          <form className="flex gap-2" onSubmit={(event) => {
+            event.preventDefault();
+            void runSearch();
+          }}>
             <div className="relative flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cream-3" />
               <input
                 className="input pl-9"
                 placeholder="Buscar endereço…"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && runSearch()}
+                disabled={searching || locatingAddress}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setQuery(value);
+                  if (value.trim() === query.trim()) return;
+                  setSuggestionQuery(isAddressAutocompleteEnabled ? value.trim() : '');
+                  setSuggestionStatus(null);
+                  setResults([]);
+                }}
               />
             </div>
-            <Button variant="ghost" onClick={runSearch} disabled={searching}>
+            <Button type="submit" variant="ghost" disabled={searching || locatingAddress} aria-label="Buscar endereço">
               {searching ? <Loader2 size={16} className="animate-spin" /> : 'Buscar'}
             </Button>
-          </div>
+          </form>
           <button
             onClick={useMyLocation}
-            disabled={geo.loading}
+            disabled={locating || locatingAddress || searching}
             className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-2 disabled:opacity-60"
           >
-            {geo.loading ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
+            {locatingAddress ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
             Usar minha localização atual
           </button>
 
-          {results.length > 0 && (
-            <div className="mt-2 overflow-hidden rounded-lg border border-ink-4">
-              {results.map((r, i) => (
-                <button
-                  key={i}
-                  onClick={() => applyResult(r)}
-                  className="block w-full border-b border-ink-4/60 px-3 py-2 text-left text-xs text-cream-3 last:border-0 hover:bg-ink-3"
-                >
-                  {r.displayName}
-                </button>
-              ))}
-            </div>
+          {suggestionStatus && (
+            <p role="status" className="mt-2 text-xs text-cream-3">
+              {suggestionStatus === 'loading' && 'Buscando sugestões…'}
+              {suggestionStatus === 'empty' && 'Nenhuma sugestão. Tente incluir o bairro ou a cidade.'}
+              {suggestionStatus === 'error' && 'Sugestões indisponíveis. Toque em Buscar para tentar a busca manual.'}
+            </p>
+          )}
+
+          {rankedResults.length > 0 && (
+            <>
+              <div className="mt-2 overflow-hidden rounded-lg border border-ink-4">
+                {rankedResults.slice(0, 6).map(({ result, distanceKm }) => (
+                  <button
+                    key={`${result.lat}:${result.lng}:${result.displayName}`}
+                    onClick={() => applyResult(result)}
+                    className="flex w-full items-start justify-between gap-2 border-b border-ink-4/60 px-3 py-2 text-left text-xs text-cream-3 last:border-0 hover:bg-ink-3"
+                  >
+                    <span>{result.displayName}</span>
+                    {distanceKm !== null && (
+                      <span className="shrink-0 whitespace-nowrap font-semibold tabular-nums text-cream">
+                        {formatKm(distanceKm)}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 flex flex-wrap justify-between gap-x-2 text-[11px] text-cream-3">
+                {location || locating ? (
+                  <span aria-live="polite">{distanceStatus}</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => {
+                      triedSearchLocation.current = true;
+                      void requestLocation({ timeout: 30000 }).catch((err: Error) => toast.error(err.message));
+                    }}
+                  >
+                    Mostrar distâncias
+                  </button>
+                )}
+                <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">
+                  © OpenStreetMap
+                </a>
+              </p>
+            </>
           )}
         </div>
 
